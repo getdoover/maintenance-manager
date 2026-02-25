@@ -5,10 +5,26 @@ from pydoover import config
 
 class MaintenanceManagerConfig(config.Schema):
     def __init__(self):
-        self.outputs_enabled = config.Boolean("Digital Outputs Enabled", default=True)
-        self.funny_message = config.String("A Funny Message")  # this will be required as no default given.
+        self.tracker_app_key = config.Application(
+            "Tracker App Key",
+            description="The app key for the tracker application that provides tag values",
+        )
 
-        self.sim_app_key = config.Application("Simulator App Key", description="The app key for the simulator")
+        self.service_interval_hours = config.Number(
+            "Service Interval (hours)",
+            description="The target number of engine hours between services",
+            exclusive_minimum=0,
+        )
+        self.service_interval_kms = config.Number(
+            "Service Interval (kms)",
+            description="The target number of kms between services",
+            exclusive_minimum=0,
+        )
+        self.service_interval_months = config.Number(
+            "Service Interval (months)",
+            description="The target number of months between services",
+            exclusive_minimum=0,
+        )
 
 
 def export():
