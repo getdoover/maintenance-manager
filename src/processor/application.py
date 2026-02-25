@@ -224,8 +224,8 @@ class MaintenanceManagerApplication(Application):
         await self.api.update_aggregate(
             self.agent_id,
             "ui_cmds",
-            {self.ui.reset_service: None},
-            allow_invoking_channel_update=True,
+            {self.ui.reset_service.name: None},
+            allow_invoking_channel=True,
         )
         self.ui.reset_service.coerce(None)
 
@@ -310,7 +310,7 @@ class MaintenanceManagerApplication(Application):
                 agent_id=self.agent_id,
                 channel_name="tag_values",
                 after=start_date,
-                before=datetime.now(tz=timezone.utc),
+                # before=datetime.now(tz=timezone.utc),
                 limit=1,
                 field_names=[f"{tracker_key}.run_hours", f"{tracker_key}.odometer_km"],
             )
@@ -328,15 +328,21 @@ class MaintenanceManagerApplication(Application):
         old_hours = tracker_data.get("run_hours")
         old_odo = tracker_data.get("odometer_km")
 
-        elapsed_days = (datetime.now(tz=timezone.utc) - msg.timestamp).days
+        elapsed = datetime.now(tz=timezone.utc) - msg.timestamp
 
-        log.info(f"Early data: {msg_data}. Current data: {tracker_data}. Elapsed: {elapsed_days}")
+        log.info(
+            f"Early data: {tracker_data}. Current data: ({raw_run_hours, raw_odometer}). Elapsed: {elapsed}"
+        )
 
-        if elapsed_days > 0 and old_hours is not None and raw_run_hours is not None:
-            hours_per_day = (raw_run_hours - old_hours) / elapsed_days
+        if old_hours is not None and raw_run_hours is not None:
+            hours_per_day = (
+                (raw_run_hours - old_hours) / elapsed.total_seconds() * (24 * 60 * 60)
+            )
 
-        if elapsed_days > 0 and old_odo is not None and raw_odometer is not None:
-            kms_per_day = (raw_odometer - old_odo) / elapsed_days
+        if old_odo is not None and raw_odometer is not None:
+            kms_per_day = (
+                (raw_odometer - old_odo) / elapsed.total_seconds() * (24 * 60 * 60)
+            )
 
         return {
             "run_hours": hours_per_day,
