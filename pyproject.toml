@@ -6,12 +6,11 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "pydoover>=0.4.13",
-    "transitions>=0.9.2",
 ]
 
 [project.scripts]
-doover-app-run = "maintenance_manager:main"
-export-config = "maintenance_manager.app_config:export"
+export-config-manager = "processor.app_config:export"
+export-config-dashboard = "dashboard.app_config:export"
 
 [build-system]
 requires = ["hatchling"]
@@ -26,3 +25,8 @@ dev = [
     "pytest-asyncio>=0.26.0",
     "requests>=2.32.3",
 ]
+[tool.hatch.build.targets.wheel]
+packages = ["src/processor", "src/dashboard"]
+
+[tool.uv.sources]
+pydoover = { git = "https://github.com/getdoover/pydoover", branch = "doover-2" }

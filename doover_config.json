@@ -2,50 +2,275 @@
     "maintenance_manager": {
         "name": "maintenance_manager",
         "display_name": "Maintenance Manager",
-        "type": "DEV",
+        "type": "PRO",
         "visibility": "PUB",
-        "allow_many": true,
+        "allow_many": false,
         "description": "Simple maintenance manager user interface with predictive service scheduling",
         "long_description": "README.md",
         "depends_on": [],
-        "owner_org_key": "FIX-ME",
-        "image_name": "ghcr.io/getdoover/maintenance-manager:main",
-        "container_registry_profile_key": "FIX-ME",
-        "build_args": "--platform linux/amd64,linux/arm64",
+        "organisation_id": null,
+        "lambda_config": {
+            "Environment": {},
+            "Runtime": "python3.13",
+            "Timeout": 300,
+            "Handler": "src.processor.handler",
+            "MemorySize": 128,
+            "Architectures": [
+                "arm64"
+            ]
+        },
         "config_schema": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": "",
             "title": "Application Config",
             "type": "object",
             "properties": {
-                "digital_outputs_enabled": {
-                    "title": "Digital Outputs Enabled",
-                    "x-name": "digital_outputs_enabled",
+                "dv_proc_subscriptions": {
+                    "title": "Subscription",
+                    "x-name": "dv_proc_subscriptions",
                     "x-hidden": false,
-                    "type": "boolean",
-                    "default": true
+                    "type": "array",
+                    "x-required": true,
+                    "description": "A list of channels to subscribe to.",
+                    "x-position": 0,
+                    "items": {
+                        "title": "Channel Subscription",
+                        "x-name": "dv_proc_subscription",
+                        "x-hidden": false,
+                        "type": "string",
+                        "x-required": true,
+                        "description": "The name of the channel to subscribe to"
+                    }
                 },
-                "a_funny_message": {
-                    "title": "A Funny Message",
-                    "x-name": "a_funny_message",
+                "dv-app-position": {
+                    "title": "Position",
+                    "x-name": "dv-app-position",
                     "x-hidden": false,
-                    "type": "string"
+                    "type": [
+                        "integer",
+                        "null"
+                    ],
+                    "x-required": false,
+                    "description": "Position of Application in UI Structure. Smaller numbers are closer to the top.",
+                    "default": 50,
+                    "x-position": 1,
+                    "minimum": 0
                 },
-                "simulator_app_key": {
+                "tracker_app_key": {
+                    "title": "Tracker App Key",
+                    "x-name": "tracker_app_key",
+                    "x-hidden": false,
                     "format": "doover-application",
-                    "title": "Simulator App Key",
-                    "x-name": "simulator_app_key",
-                    "x-hidden": false,
                     "type": "string",
-                    "description": "The app key for the simulator"
+                    "x-required": true,
+                    "description": "The app key for the tracker application that provides tag values",
+                    "x-position": 2
+                },
+                "service_interval_(hours)": {
+                    "title": "Service Interval (hours)",
+                    "x-name": "service_interval_(hours)",
+                    "x-hidden": false,
+                    "type": [
+                        "number",
+                        "null"
+                    ],
+                    "x-required": false,
+                    "description": "The target number of engine hours between services",
+                    "default": null,
+                    "x-position": 3,
+                    "exclusiveMinimum": 0
+                },
+                "service_interval_(kms)": {
+                    "title": "Service Interval (kms)",
+                    "x-name": "service_interval_(kms)",
+                    "x-hidden": false,
+                    "type": [
+                        "number",
+                        "null"
+                    ],
+                    "x-required": false,
+                    "description": "The target number of kms between services",
+                    "default": null,
+                    "x-position": 4,
+                    "exclusiveMinimum": 0
+                },
+                "service_interval_(months)": {
+                    "title": "Service Interval (months)",
+                    "x-name": "service_interval_(months)",
+                    "x-hidden": false,
+                    "type": [
+                        "number",
+                        "null"
+                    ],
+                    "x-required": false,
+                    "description": "The target number of months between services",
+                    "default": null,
+                    "x-position": 5,
+                    "exclusiveMinimum": 0
                 }
             },
             "additionalElements": true,
             "required": [
-                "a_funny_message",
-                "simulator_app_key"
+                "dv_proc_subscriptions",
+                "tracker_app_key"
             ]
         },
-        "organisation_id": "FIX-ME"
+        "id": "152261578199196431",
+        "key": null,
+        "owner_org_id": null,
+        "code_repo_id": null,
+        "container_registry_profile_id": null,
+        "repo_branch": "main",
+        "image_name": null,
+        "icon_url": null,
+        "banner_url": null,
+        "staging_config": {},
+        "export_config_command": "export-config-dashboard",
+        "run_command": null,
+        "lambda_arn": null
+    },
+    "maintenance_dashboard": {
+        "name": "maintenance_dashboard",
+        "display_name": "Maintenance Dashboard",
+        "type": "PRO",
+        "visibility": "PUB",
+        "allow_many": false,
+        "description": "A Dashboard that summarises information about maintenance schedules and upcoming services.",
+        "long_description": "README.md",
+        "depends_on": [],
+        "handler": "src.dashboard.handler",
+        "lambda_config": {
+            "Runtime": "python3.13",
+            "Timeout": 300,
+            "MemorySize": 128,
+            "Handler": "src.dashboard.handler"
+        },
+        "organisation_id": 142400552532231428,
+        "key": null,
+        "owner_org_id": 142400552532231428,
+        "code_repo_id": null,
+        "container_registry_profile_id": null,
+        "repo_branch": "main",
+        "image_name": null,
+        "icon_url": "",
+        "staging_config": {},
+        "export_config_command": "export-config-dashboard",
+        "run_command": null,
+        "lambda_arn": null,
+        "config_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "",
+            "title": "Application Config",
+            "type": "object",
+            "properties": {
+                "dv_proc_subscriptions": {
+                    "title": "Channel Subscription",
+                    "x-name": "dv_proc_subscriptions",
+                    "x-hidden": false,
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "x-required": false,
+                    "description": "The name of the channel to subscribe to",
+                    "default": "deployment_config",
+                    "x-position": 0
+                },
+                "dv_proc_extended_permissions": {
+                    "title": "Extended Permissions",
+                    "x-name": "dv_proc_extended_permissions",
+                    "x-hidden": false,
+                    "type": "object",
+                    "x-required": true,
+                    "description": "Enable extended permissions and access to other devices.",
+                    "x-position": 1,
+                    "properties": {
+                        "devices": {
+                            "title": "Devices",
+                            "x-name": "devices",
+                            "x-hidden": false,
+                            "type": "array",
+                            "x-required": true,
+                            "description": "List of devices to grant extended permissions to.",
+                            "x-position": 1,
+                            "items": {
+                                "title": "Device",
+                                "x-name": "device",
+                                "x-hidden": false,
+                                "format": "doover-resource-device",
+                                "type": "string",
+                                "x-required": true,
+                                "description": "Device ID",
+                                "pattern": "\\d+"
+                            }
+                        },
+                        "groups": {
+                            "title": "Groups",
+                            "x-name": "groups",
+                            "x-hidden": false,
+                            "type": "array",
+                            "x-required": true,
+                            "description": "List of groups to grant permissions to.",
+                            "x-position": 2,
+                            "items": {
+                                "title": "Group",
+                                "x-name": "group",
+                                "x-hidden": false,
+                                "format": "doover-resource-group",
+                                "type": "string",
+                                "x-required": true,
+                                "description": "Group ID",
+                                "pattern": "\\d+"
+                            }
+                        },
+                        "apps_installed": {
+                            "title": "Apps Installed",
+                            "x-name": "apps_installed",
+                            "x-hidden": false,
+                            "type": "array",
+                            "x-required": true,
+                            "description": "Permission will be given to any devices which have any of the apps listed installed.",
+                            "x-position": 3,
+                            "items": {
+                                "title": "Application",
+                                "x-name": "application",
+                                "x-hidden": false,
+                                "format": "doover-resource-application",
+                                "type": "string",
+                                "x-required": true,
+                                "description": "Application"
+                            }
+                        },
+                        "all_devices": {
+                            "title": "All Devices",
+                            "x-name": "all_devices",
+                            "x-hidden": false,
+                            "type": [
+                                "boolean",
+                                "null"
+                            ],
+                            "x-required": false,
+                            "description": "Permission will be given for all devices in this organisation. This is a very far-reaching permission to grant!",
+                            "default": false,
+                            "x-position": 4
+                        }
+                    },
+                    "additionalElements": true,
+                    "required": [
+                        "devices",
+                        "groups",
+                        "apps_installed"
+                    ],
+                    "x-collapsible": true,
+                    "x-defaultCollapsed": false
+                }
+            },
+            "additionalElements": true,
+            "required": [
+                "dv_proc_extended_permissions"
+            ]
+        },
+        "banner_url": null,
+        "id": "152315649572528899"
     }
 }

@@ -172,3 +172,8 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+package.zip
+#packages
+packages_export
+requirements.txt
