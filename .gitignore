@@ -177,3 +177,4 @@ package.zip
 #packages
 packages_export
 requirements.txt
+dashboard-widget/assets/*
