@@ -6,9 +6,9 @@
   "scripts": {
     "build": "rsbuild build",
     "publish": "rsbuild build && doover channel publish-file maintenance_dashboard_widget assets/MaintenanceDashboardWidget.js --agent 152558750979384069 --profile dv2",
-    "start": "rsbuild build && serve -s ../assets -l 8001",
+    "start": "rsbuild build && serve -s assets/ -l 8001",
     "watch": "rsbuild build --watch --mode development",
-    "serve": "serve -s ../assets -l 8001"
+    "serve": "serve -s assets/ -l 8001"
   },
   "author": "Doover Team",
   "license": "ISC",
