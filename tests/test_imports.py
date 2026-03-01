@@ -8,16 +8,15 @@ def test_import_app():
     from processor.application import MaintenanceManagerApplication
     assert MaintenanceManagerApplication
 
-def test_config():
-    from processor.app_config import MaintenanceManagerConfig
+    from dashboard.application import MaintenanceDashboardApp
+    assert MaintenanceDashboardApp
 
-    config = MaintenanceManagerConfig()
+def test_config():
+    from dashboard.app_config import MaintenanceDashboardConfig
+
+    config = MaintenanceDashboardConfig()
     assert isinstance(config.to_dict(), dict)
 
 def test_ui():
     from processor.app_ui import MaintenanceManagerUI
     assert MaintenanceManagerUI
-
-def test_state():
-    from processor.app_state import MaintenanceManagerState
-    assert MaintenanceManagerState

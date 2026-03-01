@@ -14,7 +14,7 @@ from .app_config import MaintenanceDashboardConfig
 log = logging.getLogger(__name__)
 
 WIDGET_NAME = "MaintenanceDashboard"
-FILE_CHANNEL = "maintenance_dashboard_widget"
+HOSTING_URL = "https://getdoover.github.io/maintenance-manager/MaintenanceDashboardWidget.js"
 MANAGER_APP_KEY = "maintenance_manager_1"
 
 
@@ -36,7 +36,7 @@ class MaintenanceDashboardApp(Application):
                 RemoteComponent(
                     name=WIDGET_NAME,
                     display_name=WIDGET_NAME,
-                    component_url=FILE_CHANNEL,
+                    component_url=HOSTING_URL,
                     app_key=self.app_key,
                     manager_app_key=MANAGER_APP_KEY,
                 ),
