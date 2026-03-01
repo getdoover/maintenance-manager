@@ -1,7 +1,7 @@
 import "./styles.css";
-import {useState, useEffect, useCallback, useMemo} from "react";
+import {useState, useEffect, useMemo} from "react";
 import RemoteComponentWrapper from "customer_site/RemoteComponentWrapper";
-import {useAgentChannel, useAgentSendUiCmd, useAgent} from "customer_site/hooks";
+import {useAgentChannel, useAgentSendUiCmd, useMultiAgentAggregates} from "customer_site/hooks";
 import {useRemoteParams} from "customer_site/useRemoteParams";
 
 import dayjs from "dayjs";
@@ -19,35 +19,33 @@ function cn(...classes: (string | false | undefined | null)[]) {
   return classes.filter(Boolean).join(" ");
 }
 
-/** Read a tag value from the tag_values aggregate using the app key. */
-function getTag(aggregate: any, appKey: string, tagName: string): any {
-  return aggregate?.[appKey]?.[tagName] ?? null;
-}
-
 /** Extract the device list from deployment_config using the app key. */
-function extractDeviceMap(config: any, appKey: string, selfId: string | undefined): Device[] {
+function extractDeviceMap(config: any, appKey: string, selfId: string | undefined): Omit<Device, "tags">[] {
   const app = config?.applications?.[appKey];
-  const deviceMap = app?.DEVICE_MAP;
-  console.log(deviceMap, app, config);
+  const deviceMap = app?.DEVICE_MAP as Record<string, { name: string; display_name: string }>;
   if (!deviceMap || typeof deviceMap !== "object") return [];
 
   return Object.entries(deviceMap)
-    .filter(([id]) => id !== selfId)
-    .map(([id, name]) => ({id, name: name as string}));
+    .filter(([id, _]) => id !== selfId)
+    .map(([id, vals]) => ({id, name: vals.name, display_name: vals.display_name}));
 }
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
+interface DeviceTags {
+  next_service_est: number | null;
+  hours_till_next_service: number | null;
+  kms_till_next_service: number | null;
+  last_service_date: number | null;
+}
+
 interface Device {
   id: string;
   name: string;
-}
-
-interface DeviceTagData {
-  aggregate: any;
-  isLoading: boolean;
+  display_name: string;
+  tags: DeviceTags;
 }
 
 // ---------------------------------------------------------------------------
@@ -79,52 +77,22 @@ function Timestamp({value}: { value: number }) {
 }
 
 // ---------------------------------------------------------------------------
-// DeviceTagsFetcher – invisible component that subscribes to a device's tags
-// channel and reports data back to the parent via callback.
-// ---------------------------------------------------------------------------
-
-function DeviceTagsFetcher({
-                             deviceId,
-                             onData,
-                           }: {
-  deviceId: string;
-  onData: (id: string, data: DeviceTagData) => void;
-}) {
-  const {aggregate, isLoading} = useAgentChannel(deviceId, "tag_values");
-
-  useEffect(() => {
-    onData(deviceId, {aggregate, isLoading});
-  }, [aggregate, isLoading, deviceId, onData]);
-
-  return null;
-}
-
-// ---------------------------------------------------------------------------
 // DeviceRow – visible table row with its own useAgentSendUiCmd hook.
 // ---------------------------------------------------------------------------
 
 function DeviceRow({
                      device,
                      app_key,
-                     nextServiceEst,
-                     hoursTillService,
-                     kmsTillService,
-                     lastServiceDate,
-                     isLoading,
                    }: {
   device: Device;
   app_key: string;
-  nextServiceEst: number | null;
-  hoursTillService: number | null;
-  kmsTillService: number | null;
-  lastServiceDate: number | null;
-  isLoading: boolean;
 }) {
   const {mutate, isPending} = useAgentSendUiCmd(device.id) as any;
   const [expanded, setExpanded] = useState(false);
 
-  const hoursDisplay = hoursTillService != null ? Math.round(hoursTillService) : null;
-  const kmsDisplay = kmsTillService != null ? Math.round(kmsTillService) : null;
+  const tags = device.tags;
+  const hoursDisplay = tags.hours_till_next_service != null ? Math.round(tags.hours_till_next_service) : null;
+  const kmsDisplay = tags.kms_till_next_service != null ? Math.round(tags.kms_till_next_service) : null;
 
   return (
     <>
@@ -139,16 +107,14 @@ function DeviceRow({
             className="text-primary hover:underline underline-offset-4 font-medium"
             onClick={(e) => e.stopPropagation()}
           >
-            {device.name}
+            {device.display_name}
           </a>
         </td>
 
         {/* Next service due – timestamp with tooltip */}
         <td className="p-2 align-middle whitespace-nowrap text-center">
-          {isLoading ? (
-            <span className="text-muted-foreground">Loading...</span>
-          ) : nextServiceEst != null ? (
-            <Timestamp value={nextServiceEst}/>
+          {tags.next_service_est != null ? (
+            <Timestamp value={tags.next_service_est}/>
           ) : (
             <span className="text-muted-foreground">-</span>
           )}
@@ -156,9 +122,7 @@ function DeviceRow({
 
         {/* Hours till service – desktop only */}
         <td className="hidden md:table-cell p-2 align-middle whitespace-nowrap text-center">
-          {isLoading ? (
-            <span className="text-muted-foreground">Loading...</span>
-          ) : hoursDisplay != null ? (
+          {hoursDisplay != null ? (
             <span>{hoursDisplay}</span>
           ) : (
             <span className="text-muted-foreground">-</span>
@@ -167,9 +131,7 @@ function DeviceRow({
 
         {/* Kms till service – desktop only */}
         <td className="hidden md:table-cell p-2 align-middle whitespace-nowrap text-center">
-          {isLoading ? (
-            <span className="text-muted-foreground">Loading...</span>
-          ) : kmsDisplay != null ? (
+          {kmsDisplay != null ? (
             <span>{kmsDisplay}</span>
           ) : (
             <span className="text-muted-foreground">-</span>
@@ -207,7 +169,7 @@ function DeviceRow({
               <div>
                 <span className="text-muted-foreground">Last service: </span>
                 <span className="font-medium">
-                  {lastServiceDate != null ? <Timestamp value={lastServiceDate}/> : "-"}
+                  {tags.last_service_date != null ? <Timestamp value={tags.last_service_date}/> : "-"}
                 </span>
               </div>
             </div>
@@ -235,41 +197,30 @@ function MaintenanceDashboardWidgetInner({uiElement}: { uiElement: UiRemoteCompo
     useAgentChannel(agentId, "deployment_config");
 
   // Parse device map – exclude the dashboard agent itself
-  const devices: Device[] = useMemo(
+  const devices: Omit<Device, "tags">[] = useMemo(
     () => extractDeviceMap(deploymentConfig, uiElement.app_key, agentId),
     [deploymentConfig, uiElement.app_key, agentId],
   );
+  const deviceIds = devices.map(d => d.id);
 
-  // 2. Collect tag data from each DeviceTagsFetcher
-  const [tagData, setTagData] = useState<Record<string, DeviceTagData>>({});
+  const {aggregates, isLoading: aggregatesLoading} = useMultiAgentAggregates(deviceIds, "tag_values");
 
-  const handleDeviceData = useCallback(
-    (deviceId: string, data: DeviceTagData) => {
-      setTagData((prev) => {
-        const existing = prev[deviceId];
-        if (
-          existing?.aggregate === data.aggregate &&
-          existing?.isLoading === data.isLoading
-        ) {
-          return prev; // no change – avoid unnecessary re-render
-        }
-        return {...prev, [deviceId]: data};
-      });
-    },
-    [],
-  );
+  const deviceData = useMemo(() => {
+    const deviceMap = new Array<Device>();
 
-  // 3. Sort by next service date – soonest first, nulls last
-  const sorted = useMemo(() => {
-    return [...devices].sort((a, b) => {
-      const aEst = getTag(tagData[a.id]?.aggregate, appKey, "next_service_est");
-      const bEst = getTag(tagData[b.id]?.aggregate, appKey, "next_service_est");
-      if (aEst == null && bEst == null) return 0;
-      if (aEst == null) return 1;
-      if (bEst == null) return -1;
-      return aEst - bEst;
-    });
-  }, [devices, tagData, appKey]);
+    for (const device of devices) {
+      const tagValues = aggregates[device.id]?.data?.[appKey]
+      const tags = {
+        next_service_est: tagValues?.next_service_est,
+        hours_till_next_service: tagValues?.hours_till_next_service,
+        kms_till_next_service: tagValues?.kms_till_next_service,
+        last_service_date: tagValues?.last_service_date,
+      } as DeviceTags;
+      const newDevice = {...device, tags};
+      deviceMap.push(newDevice);
+    }
+    return deviceMap.sort((a, b) => a.tags.next_service_est - b.tags.next_service_est)
+  }, [devices, aggregates])
 
   // Keep relative timestamps fresh
   const [, setTick] = useState(0);
@@ -280,7 +231,7 @@ function MaintenanceDashboardWidgetInner({uiElement}: { uiElement: UiRemoteCompo
 
   // --- Render ---
 
-  if (configLoading) {
+  if (configLoading || aggregatesLoading) {
     return (
       <div className="p-4 text-sm text-muted-foreground">
         Loading devices...
@@ -290,15 +241,6 @@ function MaintenanceDashboardWidgetInner({uiElement}: { uiElement: UiRemoteCompo
 
   return (
     <>
-      {/* Hidden data fetchers – one per device */}
-      {devices.map((d) => (
-        <DeviceTagsFetcher
-          key={d.id}
-          deviceId={d.id}
-          onData={handleDeviceData}
-        />
-      ))}
-
       <div className="relative w-full overflow-x-auto">
         <table className="w-full caption-bottom text-xs">
           <thead className="[&_tr]:border-b">
@@ -324,7 +266,7 @@ function MaintenanceDashboardWidgetInner({uiElement}: { uiElement: UiRemoteCompo
           </thead>
 
           <tbody className="[&_tr:last-child]:border-0">
-          {sorted.length === 0 ? (
+          {deviceData.length === 0 ? (
             <tr>
               <td
                 colSpan={5}
@@ -334,18 +276,12 @@ function MaintenanceDashboardWidgetInner({uiElement}: { uiElement: UiRemoteCompo
               </td>
             </tr>
           ) : (
-            sorted.map((device) => {
-              const agg = tagData[device.id]?.aggregate;
+            deviceData.map((device) => {
               return (
                 <DeviceRow
                   key={device.id}
                   device={device}
                   app_key={appKey}
-                  nextServiceEst={getTag(agg, appKey, "next_service_est")}
-                  hoursTillService={getTag(agg, appKey, "hours_till_next_service")}
-                  kmsTillService={getTag(agg, appKey, "kms_till_next_service")}
-                  lastServiceDate={getTag(agg, appKey, "last_service_date")}
-                  isLoading={tagData[device.id]?.isLoading ?? true}
                 />
               );
             })
@@ -362,7 +298,6 @@ function MaintenanceDashboardWidgetInner({uiElement}: { uiElement: UiRemoteCompo
 // ---------------------------------------------------------------------------
 
 const MaintenanceDashboardWidget = (props: any) => {
-  console.log("props, prop", props);
   return (
     <RemoteComponentWrapper>
       <MaintenanceDashboardWidgetInner {...props} />
