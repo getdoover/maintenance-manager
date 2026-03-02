@@ -39,6 +39,8 @@ interface DeviceTags {
   hours_till_next_service: number | null;
   kms_till_next_service: number | null;
   last_service_date: number | null;
+  engine_hours: number | null;
+  machine_odometer: number | null;
 }
 
 interface Device {
@@ -77,6 +79,125 @@ function Timestamp({value}: { value: number }) {
 }
 
 // ---------------------------------------------------------------------------
+// ServiceForm – inline form for recording a service with specific readings
+// ---------------------------------------------------------------------------
+
+function ServiceForm({
+  mutate,
+  isPending,
+  app_key,
+  engineHours,
+  machineOdometer,
+  onClose,
+}: {
+  mutate: (payload: any) => void;
+  isPending: boolean;
+  app_key: string;
+  engineHours: number | null;
+  machineOdometer: number | null;
+  onClose: () => void;
+}) {
+  const today = dayjs().format("YYYY-MM-DD");
+  const [date, setDate] = useState(today);
+  const [hours, setHours] = useState(engineHours != null ? String(engineHours) : "");
+  const [odometer, setOdometer] = useState(machineOdometer != null ? String(machineOdometer) : "");
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = () => {
+    if (!date) {
+      setError("Date is required.");
+      return;
+    }
+    const parsedHours = hours.trim() !== "" ? parseFloat(hours) : null;
+    const parsedOdo = odometer.trim() !== "" ? parseFloat(odometer) : null;
+
+    if (parsedHours == null && parsedOdo == null) {
+      setError("At least one of hours or odometer is required.");
+      return;
+    }
+    if (parsedHours != null && isNaN(parsedHours)) {
+      setError("Hours must be a valid number.");
+      return;
+    }
+    if (parsedOdo != null && isNaN(parsedOdo)) {
+      setError("Odometer must be a valid number.");
+      return;
+    }
+
+    setError(null);
+    const dateMs = dayjs(date).startOf("day").valueOf();
+    mutate({
+      [`${app_key}_reset_service`]: {
+        date: dateMs,
+        hours: parsedHours,
+        odometer: parsedOdo,
+      },
+    });
+    onClose();
+  };
+
+  const inputClass =
+    "h-7 w-full rounded-md border border-border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring";
+
+  return (
+    <tr className="border-b bg-muted/30">
+      <td colSpan={5} className="px-4 py-3 text-xs" onClick={(e) => e.stopPropagation()}>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-col gap-1">
+            <label className="text-muted-foreground font-medium">Date *</label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className={inputClass}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-muted-foreground font-medium">Hours</label>
+            <input
+              type="number"
+              step="any"
+              value={hours}
+              onChange={(e) => setHours(e.target.value)}
+              placeholder="Engine hours"
+              className={inputClass}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-muted-foreground font-medium">Odometer (km)</label>
+            <input
+              type="number"
+              step="any"
+              value={odometer}
+              onChange={(e) => setOdometer(e.target.value)}
+              placeholder="Kms"
+              className={inputClass}
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handleSubmit}
+              disabled={isPending}
+              className="inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground text-xs font-medium h-7 px-3 hover:bg-primary/90 transition-colors disabled:pointer-events-none disabled:opacity-50 select-none"
+            >
+              {isPending ? "..." : "Submit"}
+            </button>
+            <button
+              onClick={onClose}
+              disabled={isPending}
+              className="inline-flex items-center justify-center rounded-md border border-border text-xs font-medium h-7 px-3 hover:bg-muted/50 transition-colors disabled:pointer-events-none disabled:opacity-50 select-none"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+        {error && <p className="mt-2 text-destructive font-medium">{error}</p>}
+      </td>
+    </tr>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // DeviceRow – visible table row with its own useAgentSendUiCmd hook.
 // ---------------------------------------------------------------------------
 
@@ -89,6 +210,7 @@ function DeviceRow({
 }) {
   const {mutate, isPending} = useAgentSendUiCmd(device.id) as any;
   const [expanded, setExpanded] = useState(false);
+  const [showServiceForm, setShowServiceForm] = useState(false);
 
   const tags = device.tags;
   const hoursDisplay = tags.hours_till_next_service != null ? Math.round(tags.hours_till_next_service) : null;
@@ -143,7 +265,7 @@ function DeviceRow({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              mutate({[`${app_key}_reset_service`]: true});
+              setShowServiceForm((v) => !v);
             }}
             disabled={isPending}
             className="inline-flex items-center justify-center whitespace-nowrap rounded-md border border-border text-xs/relaxed font-medium h-6 px-2 hover:bg-muted/50 hover:text-foreground transition-all disabled:pointer-events-none disabled:opacity-50 select-none"
@@ -152,6 +274,18 @@ function DeviceRow({
           </button>
         </td>
       </tr>
+
+      {/* Service form row */}
+      {showServiceForm && (
+        <ServiceForm
+          mutate={mutate}
+          isPending={isPending}
+          app_key={app_key}
+          engineHours={tags.engine_hours}
+          machineOdometer={tags.machine_odometer}
+          onClose={() => setShowServiceForm(false)}
+        />
+      )}
 
       {/* Expanded detail row */}
       {expanded && (
@@ -215,6 +349,8 @@ function MaintenanceDashboardWidgetInner({uiElement}: { uiElement: UiRemoteCompo
         hours_till_next_service: tagValues?.hours_till_next_service,
         kms_till_next_service: tagValues?.kms_till_next_service,
         last_service_date: tagValues?.last_service_date,
+        engine_hours: tagValues?.engine_hours ?? null,
+        machine_odometer: tagValues?.machine_odometer ?? null,
       } as DeviceTags;
       const newDevice = {...device, tags};
       deviceMap.push(newDevice);

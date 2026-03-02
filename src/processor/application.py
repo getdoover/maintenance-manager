@@ -193,36 +193,44 @@ class MaintenanceManagerApplication(Application):
 
     @ui.callback("reset_service")
     async def on_reset_service(self, element, new_value):
-        if new_value is not True:
-            log.info("Ignoring non-True button click.")
+        if new_value is True:
+            # Legacy path: read current values from the tracker
+            raw_run_hours = self.get_tracker_tag("run_hours")
+            raw_odometer = self.get_tracker_tag("odometer_km")
+
+            hours_offset = await self.get_tag("hours_offset", default=0)
+            odo_offset = await self.get_tag("odo_offset", default=0)
+
+            engine_hours = (
+                raw_run_hours + hours_offset if raw_run_hours is not None else None
+            )
+            machine_odometer = (
+                raw_odometer + odo_offset if raw_odometer is not None else None
+            )
+            service_date_ts = int(datetime.now(tz=timezone.utc).timestamp() * 1000)
+
+        elif isinstance(new_value, dict):
+            # New path: use user-provided values from the service form
+            service_date_ts = new_value.get("date")
+            if service_date_ts is None:
+                log.warning("Service form submitted without a date, ignoring.")
+                return
+            engine_hours = new_value.get("hours")
+            machine_odometer = new_value.get("odometer")
+        else:
+            log.info("Ignoring unexpected reset_service value: %s", new_value)
             return
 
-        raw_run_hours = self.get_tracker_tag("run_hours")
-        raw_odometer = self.get_tracker_tag("odometer_km")
-
-        hours_offset = await self.get_tag("hours_offset", default=0)
-        odo_offset = await self.get_tag("odo_offset", default=0)
-
-        engine_hours = (
-            raw_run_hours + hours_offset if raw_run_hours is not None else None
-        )
-        machine_odometer = (
-            raw_odometer + odo_offset if raw_odometer is not None else None
-        )
-
-        now_ts = int(datetime.now(tz=timezone.utc).timestamp() * 1000)
-
         log.info(
-            f"Recording service now: hours={engine_hours}, odo={machine_odometer}, date={now_ts}"
+            f"Recording service: hours={engine_hours}, odo={machine_odometer}, date={service_date_ts}"
         )
-        await self.set_tag("last_service_date", now_ts)
+        await self.set_tag("last_service_date", service_date_ts)
         await self.set_tag("service_notification_sent", False)
         if engine_hours is not None:
             await self.set_tag("last_service_hours", engine_hours)
         if machine_odometer is not None:
             await self.set_tag("last_service_kms", machine_odometer)
 
-        # safety check: this is OK because we check that the `reset_service` value is `True` at the start of the command.
         await self.api.update_aggregate(
             self.agent_id,
             "ui_cmds",
