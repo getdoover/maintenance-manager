@@ -47,11 +47,9 @@ class MaintenanceManagerApplication(Application):
         machine_odometer = raw_odometer + odo_offset
 
         # compute average rates
-        ave_calc_days = self._get_ave_calc_days()
         ave_rates = await self._get_average_rates(
             raw_run_hours,
             raw_odometer,
-            ave_calc_days,
         )
 
         # read service parameters from tags (set by reset_service action)
@@ -151,6 +149,9 @@ class MaintenanceManagerApplication(Application):
         await self.set_tag("machine_odometer", machine_odometer)
         await self.set_tag("kms_till_next_service", kms_till_next_service)
 
+        # check if we need to send a service-due notification
+        await self._check_service_notification(days_till_service_due)
+
         # push UI changes
         await self.ui_manager.push_async()
 
@@ -215,6 +216,7 @@ class MaintenanceManagerApplication(Application):
             f"Recording service now: hours={engine_hours}, odo={machine_odometer}, date={now_ts}"
         )
         await self.set_tag("last_service_date", now_ts)
+        await self.set_tag("service_notification_sent", False)
         if engine_hours is not None:
             await self.set_tag("last_service_hours", engine_hours)
         if machine_odometer is not None:
@@ -228,6 +230,39 @@ class MaintenanceManagerApplication(Application):
             allow_invoking_channel=True,
         )
         self.ui.reset_service.coerce(None)
+
+    # --- Notification methods ---
+
+    async def _check_service_notification(self, days_till_service_due):
+        alert_period = self.config.notification_alert_period.value
+        if alert_period is None or days_till_service_due is None:
+            return
+
+        if days_till_service_due > alert_period:
+            return
+
+        already_sent = await self.get_tag("service_notification_sent", default=False)
+        if already_sent:
+            return
+
+        try:
+            device_name = self.received_deployment_config["DEVICE_MAP"][str(self.agent_id)]["display_name"]
+        except (KeyError, TypeError):
+            device_name = "Unknown device"
+
+        message = f"{device_name} is due for a service in {int(days_till_service_due)} days"
+
+        log.info(f"Sending service notification: {message}")
+        await self.api.publish_message(
+            self.agent_id,
+            "notifications",
+            {
+                "severity": "warning",
+                "topic": "service_due",
+                "message": message,
+            },
+        )
+        await self.set_tag("service_notification_sent", True)
 
     # --- Helper methods ---
 
@@ -253,10 +288,6 @@ class MaintenanceManagerApplication(Application):
             return self._tag_values[self.config.tracker_app_key.value][key]
         except (KeyError, TypeError):
             return default
-
-    def _get_ave_calc_days(self):
-        val = self.ui.ave_calc_days.current_value
-        return val if val is not None else DEFAULT_AVE_CALC_DAYS
 
     def _get_next_service_estimate(
         self,
@@ -298,9 +329,11 @@ class MaintenanceManagerApplication(Application):
             return min(estimates)
         return None
 
-    async def _get_average_rates(self, raw_run_hours, raw_odometer, window_days):
+    async def _get_average_rates(self, raw_run_hours, raw_odometer):
         tracker_key = self.config.tracker_app_key.value
-        start_date = datetime.now(tz=timezone.utc) - timedelta(days=window_days)
+        start_date = datetime.now(tz=timezone.utc) - timedelta(
+            days=self.config.average_use_period.value
+        )
 
         hours_per_day = 0
         kms_per_day = 0

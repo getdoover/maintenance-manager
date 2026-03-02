@@ -31,6 +31,18 @@ class MaintenanceManagerConfig(config.Schema):
             exclusive_minimum=0,
             default=None,
         )
+        self.notification_alert_period = config.Integer(
+            "Notification Alert Period",
+            description="The number of days before a service is due to trigger a notification alert",
+            exclusive_minimum=0,
+            default=14,
+        )
+        self.average_use_period = config.Integer(
+            "Average Use Period",
+            description="The number of days to use to calculate average use",
+            exclusive_minimum=0,
+            default=14,
+        )
 
 
 def export():

@@ -122,12 +122,6 @@ class MaintenanceManagerUI:
 
         # --- Config submodule ---
         self.config_submodule = ui.Submodule("config_submodule", "Config", icon="gear")
-        self.ave_calc_days = ui.NumericParameter(
-            "aveCalcDays",
-            "Ave Use Calculation",
-            units="days",
-            requires_confirm=True,
-        )
         self.set_hours = ui.NumericParameter(
             "setHours",
             "Set Machine Hours",
@@ -145,7 +139,6 @@ class MaintenanceManagerUI:
         self.config_submodule.add_children(
             self.set_hours,
             self.set_kms,
-            self.ave_calc_days,
         )
 
     def fetch(self):
