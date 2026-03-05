@@ -28,9 +28,16 @@ class MaintenanceManagerApplication(Application):
 
     async def on_message_create(self, event: MessageCreateEvent):
         if event.channel_name == "ui_cmds":
-            log.info(f"Handling ui_cmd: {event.message.data}")
-            await self.ui_manager.on_command_update_async(None, event.message.data)
-            await self.ui_manager.push_async(publish_fields=["currentValue"])
+            msg_data = event.message.data or {}
+
+            # Handle request-style messages (e.g. from dashboard)
+            request = msg_data.get("request")
+            if request and isinstance(request, dict):
+                await self._handle_request(request)
+            else:
+                log.info(f"Handling ui_cmd: {msg_data}")
+                await self.ui_manager.on_command_update_async(None, msg_data)
+                await self.ui_manager.push_async(publish_fields=["currentValue"])
 
         # read tag values from the tracker app
         raw_run_hours = self.get_tracker_tag("run_hours", default=0)
@@ -191,35 +198,62 @@ class MaintenanceManagerApplication(Application):
         await self.set_tag("odo_offset", new_offset)
         self.ui.set_kms.coerce(new_value)
 
-    @ui.callback("reset_service")
-    async def on_reset_service(self, element, new_value):
-        if new_value is True:
-            # Legacy path: read current values from the tracker
-            raw_run_hours = self.get_tracker_tag("run_hours")
-            raw_odometer = self.get_tracker_tag("odometer_km")
-
-            hours_offset = await self.get_tag("hours_offset", default=0)
-            odo_offset = await self.get_tag("odo_offset", default=0)
-
-            engine_hours = (
-                raw_run_hours + hours_offset if raw_run_hours is not None else None
-            )
-            machine_odometer = (
-                raw_odometer + odo_offset if raw_odometer is not None else None
-            )
-            service_date_ts = int(datetime.now(tz=timezone.utc).timestamp() * 1000)
-
-        elif isinstance(new_value, dict):
-            # New path: use user-provided values from the service form
-            service_date_ts = new_value.get("date")
-            if service_date_ts is None:
-                log.warning("Service form submitted without a date, ignoring.")
-                return
-            engine_hours = new_value.get("hours")
-            machine_odometer = new_value.get("odometer")
-        else:
-            log.info("Ignoring unexpected reset_service value: %s", new_value)
+    @ui.callback("set_last_service_at")
+    async def on_set_last_service_at(self, element, new_value):
+        if new_value is None:
             return
+
+        # new_value is an ISO datetime string or ms timestamp from the DateTimeParameter
+        try:
+            if isinstance(new_value, (int, float)):
+                service_dt = datetime.fromtimestamp(new_value / 1000, tz=timezone.utc)
+            else:
+                service_dt = datetime.fromisoformat(str(new_value))
+                if service_dt.tzinfo is None:
+                    service_dt = service_dt.replace(tzinfo=timezone.utc)
+        except (TypeError, ValueError) as e:
+            log.warning(f"Invalid set_last_service_at value: {new_value} ({e})")
+            return
+
+        await self._record_service(service_dt)
+
+    async def _handle_request(self, request):
+        name = request.get("name")
+        values = request.get("values", {})
+
+        if name == "create_service":
+            dt_ms = values.get("dt")
+            if dt_ms is None:
+                log.warning("create_service request missing 'dt'")
+                return
+
+            try:
+                service_dt = datetime.fromtimestamp(dt_ms / 1000, tz=timezone.utc)
+            except (TypeError, ValueError, OSError) as e:
+                log.warning(f"Invalid create_service dt: {dt_ms} ({e})")
+                return
+
+            engine_hours = values.get("hours")
+            machine_odometer = values.get("kms")
+            await self._record_service(service_dt, engine_hours, machine_odometer)
+        else:
+            log.info(f"Unknown request: {name}")
+
+    async def _record_service(self, service_dt, engine_hours=None, machine_odometer=None):
+        """Record a service at the given datetime.
+
+        If engine_hours or machine_odometer are not provided, fetch the
+        closest historical values from before the service time.
+        """
+        service_date_ts = int(service_dt.timestamp() * 1000)
+
+        # Fill in missing values from historical tag_values
+        if engine_hours is None or machine_odometer is None:
+            hist_hours, hist_odo = await self._get_historical_readings(service_dt)
+            if engine_hours is None:
+                engine_hours = hist_hours
+            if machine_odometer is None:
+                machine_odometer = hist_odo
 
         log.info(
             f"Recording service: hours={engine_hours}, odo={machine_odometer}, date={service_date_ts}"
@@ -231,13 +265,47 @@ class MaintenanceManagerApplication(Application):
         if machine_odometer is not None:
             await self.set_tag("last_service_kms", machine_odometer)
 
-        await self.api.update_aggregate(
-            self.agent_id,
-            "ui_cmds",
-            {self.ui.reset_service.name: None},
-            allow_invoking_channel=True,
-        )
-        self.ui.reset_service.coerce(None)
+    async def _get_historical_readings(self, before_dt):
+        """Fetch engine hours and odometer from the tag_values message closest before before_dt."""
+        tracker_key = self.config.tracker_app_key.value
+        engine_hours = None
+        machine_odometer = None
+
+        try:
+            messages = await self.api.get_channel_messages(
+                agent_id=self.agent_id,
+                channel_name="tag_values",
+                before=before_dt,
+                limit=1,
+                field_names=[f"{tracker_key}.run_hours", f"{tracker_key}.odometer_km"],
+            )
+
+            if messages:
+                msg = messages[0]
+                msg_data = msg.data or {}
+                tracker_data = msg_data.get(tracker_key, {})
+
+                raw_run_hours = tracker_data.get("run_hours")
+                raw_odometer = tracker_data.get("odometer_km")
+
+                hours_offset = await self.get_tag("hours_offset", default=0) or 0
+                odo_offset = await self.get_tag("odo_offset", default=0) or 0
+
+                if raw_run_hours is not None:
+                    engine_hours = raw_run_hours + hours_offset
+                if raw_odometer is not None:
+                    machine_odometer = raw_odometer + odo_offset
+
+                log.info(
+                    f"Found historical data at {msg.timestamp}: "
+                    f"raw_hours={raw_run_hours}, raw_odo={raw_odometer}"
+                )
+            else:
+                log.warning(f"No tag_values messages found before {before_dt}")
+        except Exception as e:
+            log.error(f"Error fetching historical tag_values: {e}")
+
+        return engine_hours, machine_odometer
 
     # --- Notification methods ---
 

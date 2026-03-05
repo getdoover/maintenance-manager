@@ -8,6 +8,8 @@ import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 
+import {DateTimePicker} from "./DateTimePicker";
+
 dayjs.extend(relativeTime);
 dayjs.extend(localizedFormat);
 
@@ -86,6 +88,7 @@ function ServiceForm({
   mutate,
   isPending,
   app_key,
+  deviceName,
   engineHours,
   machineOdometer,
   onClose,
@@ -93,28 +96,24 @@ function ServiceForm({
   mutate: (payload: any) => void;
   isPending: boolean;
   app_key: string;
+  deviceName: string;
   engineHours: number | null;
   machineOdometer: number | null;
   onClose: () => void;
 }) {
-  const today = dayjs().format("YYYY-MM-DD");
-  const [date, setDate] = useState(today);
+  const [dateTimeValue, setDateTimeValue] = useState<Date | undefined>(() => new Date());
   const [hours, setHours] = useState(engineHours != null ? String(engineHours) : "");
   const [odometer, setOdometer] = useState(machineOdometer != null ? String(machineOdometer) : "");
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = () => {
-    if (!date) {
-      setError("Date is required.");
+    if (!dateTimeValue) {
+      setError("Date/time is required.");
       return;
     }
     const parsedHours = hours.trim() !== "" ? parseFloat(hours) : null;
     const parsedOdo = odometer.trim() !== "" ? parseFloat(odometer) : null;
 
-    if (parsedHours == null && parsedOdo == null) {
-      setError("At least one of hours or odometer is required.");
-      return;
-    }
     if (parsedHours != null && isNaN(parsedHours)) {
       setError("Hours must be a valid number.");
       return;
@@ -125,35 +124,42 @@ function ServiceForm({
     }
 
     setError(null);
-    const dateMs = dayjs(date).startOf("day").valueOf();
+    const dateMs = dayjs(dateTimeValue).valueOf();
     mutate({
-      [`${app_key}_reset_service`]: {
-        date: dateMs,
-        hours: parsedHours,
-        odometer: parsedOdo,
+      request: {
+        name: "create_service",
+        values: {
+          dt: dateMs,
+          hours: parsedHours,
+          kms: parsedOdo,
+        },
       },
     });
     onClose();
   };
 
   const inputClass =
-    "h-7 w-full rounded-md border border-border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring";
+    "h-7 w-full rounded-md border border-border bg-input/20 px-2 text-xs transition-colors focus-visible:border-ring focus-visible:ring-ring/30 focus-visible:ring-[2px] outline-none disabled:pointer-events-none disabled:opacity-50";
 
   return (
-    <tr className="border-b bg-muted/30">
-      <td colSpan={5} className="px-4 py-3 text-xs" onClick={(e) => e.stopPropagation()}>
-        <div className="flex flex-wrap items-end gap-3">
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
+      <div
+        className="relative z-[51] w-full max-w-md rounded-lg border border-border bg-background p-6 shadow-lg"
+      >
+        <h3 className="text-sm font-semibold mb-1">{deviceName}</h3>
+        <p className="text-xs text-muted-foreground mb-4">Record a service for this device.</p>
+        <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
-            <label className="text-muted-foreground font-medium">Date *</label>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className={inputClass}
+            <label className="text-xs text-muted-foreground font-medium">Service Date/Time *</label>
+            <DateTimePicker
+              value={dateTimeValue}
+              onChange={setDateTimeValue}
+              disabled={isPending}
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-muted-foreground font-medium">Hours</label>
+            <label className="text-xs text-muted-foreground font-medium">Hours</label>
             <input
               type="number"
               step="any"
@@ -164,7 +170,7 @@ function ServiceForm({
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-muted-foreground font-medium">Odometer (km)</label>
+            <label className="text-xs text-muted-foreground font-medium">Odometer (km)</label>
             <input
               type="number"
               step="any"
@@ -174,26 +180,26 @@ function ServiceForm({
               className={inputClass}
             />
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={handleSubmit}
-              disabled={isPending}
-              className="inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground text-xs font-medium h-7 px-3 hover:bg-primary/90 transition-colors disabled:pointer-events-none disabled:opacity-50 select-none"
-            >
-              {isPending ? "..." : "Submit"}
-            </button>
+          {error && <p className="text-xs text-destructive font-medium">{error}</p>}
+          <div className="flex justify-end gap-2 mt-1">
             <button
               onClick={onClose}
               disabled={isPending}
-              className="inline-flex items-center justify-center rounded-md border border-border text-xs font-medium h-7 px-3 hover:bg-muted/50 transition-colors disabled:pointer-events-none disabled:opacity-50 select-none"
+              className="inline-flex items-center justify-center rounded-md border border-border text-xs font-medium h-8 px-4 hover:bg-muted/50 transition-colors disabled:pointer-events-none disabled:opacity-50 select-none"
             >
               Cancel
             </button>
+            <button
+              onClick={handleSubmit}
+              disabled={isPending}
+              className="inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground text-xs font-medium h-8 px-4 hover:bg-primary/90 transition-colors disabled:pointer-events-none disabled:opacity-50 select-none"
+            >
+              {isPending ? "..." : "Submit"}
+            </button>
           </div>
         </div>
-        {error && <p className="mt-2 text-destructive font-medium">{error}</p>}
-      </td>
-    </tr>
+      </div>
+    </div>
   );
 }
 
@@ -275,12 +281,13 @@ function DeviceRow({
         </td>
       </tr>
 
-      {/* Service form row */}
+      {/* Service dialog */}
       {showServiceForm && (
         <ServiceForm
           mutate={mutate}
           isPending={isPending}
           app_key={app_key}
+          deviceName={device.display_name}
           engineHours={tags.engine_hours}
           machineOdometer={tags.machine_odometer}
           onClose={() => setShowServiceForm(false)}
@@ -377,7 +384,7 @@ function MaintenanceDashboardWidgetInner({uiElement}: { uiElement: UiRemoteCompo
 
   return (
     <>
-      <div className="relative w-full overflow-x-auto">
+      <div className="relative">
         <table className="w-full caption-bottom text-xs">
           <thead className="[&_tr]:border-b">
           <tr className="border-b transition-colors">

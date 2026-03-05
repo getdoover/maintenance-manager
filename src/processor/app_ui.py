@@ -116,10 +116,6 @@ class MaintenanceManagerUI:
             name="tabs", display_name="Tabs", children=[service_info, engine_info, last_service_info]
         )
 
-        self.reset_service = ui.Action(
-            "reset_service", "Set Service Now", requires_confirm=True
-        )
-
         # --- Config submodule ---
         self.config_submodule = ui.Submodule("config_submodule", "Config", icon="gear")
         self.set_hours = ui.NumericParameter(
@@ -136,14 +132,17 @@ class MaintenanceManagerUI:
             icon="road",
             requires_confirm=True,
         )
+        self.set_last_service_at = ui.DateTimeParameter(
+            "set_last_service_at", "Set Last Service", requires_confirm=True
+        )
         self.config_submodule.add_children(
             self.set_hours,
             self.set_kms,
+            self.set_last_service_at
         )
 
     def fetch(self):
         return (
             self.tabs,
-            self.reset_service,
             self.config_submodule,
         )
