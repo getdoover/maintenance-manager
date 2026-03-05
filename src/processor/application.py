@@ -30,7 +30,7 @@ class MaintenanceManagerApplication(Application):
         if event.channel_name == "ui_cmds":
             log.info(f"Handling ui_cmd: {event.message.data}")
             await self.ui_manager.on_command_update_async(None, event.message.data)
-            await self.ui_manager.push_async()
+            await self.ui_manager.push_async(publish_fields=["currentValue"])
 
         # read tag values from the tracker app
         raw_run_hours = self.get_tracker_tag("run_hours", default=0)

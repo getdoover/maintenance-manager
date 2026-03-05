@@ -178,3 +178,4 @@ package.zip
 packages_export
 requirements.txt
 dashboard-widget/assets/*
+dashboard-widget/node_modules
