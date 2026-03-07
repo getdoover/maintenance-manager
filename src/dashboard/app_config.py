@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from pydoover import config
-from pydoover.cloud.processor import ExtendedPermissionsConfig, SubscriptionConfig, ScheduleConfig
+from pydoover.cloud.processor import ExtendedPermissionsConfig, SubscriptionConfig
 
 
 class MaintenanceDashboardConfig(config.Schema):

@@ -1,5 +1,6 @@
 import "./styles.css";
 import {useState, useEffect, useMemo} from "react";
+import {createPortal} from "react-dom";
 import RemoteComponentWrapper from "customer_site/RemoteComponentWrapper";
 import {useAgentChannel, useAgentSendUiCmd, useMultiAgentAggregates} from "customer_site/hooks";
 import {useRemoteParams} from "customer_site/useRemoteParams";
@@ -41,6 +42,7 @@ interface DeviceTags {
   hours_till_next_service: number | null;
   kms_till_next_service: number | null;
   last_service_date: number | null;
+  last_service_hours: number | null;
   engine_hours: number | null;
   machine_odometer: number | null;
 }
@@ -59,7 +61,7 @@ interface Device {
 function Timestamp({value}: { value: number }) {
   const date = dayjs(value);
   const relative = date.fromNow();
-  const absolute = date.format("LLLL");
+  const longDate = date.format("ddd, LL");
   const isPast = date.isBefore(dayjs());
 
   return (
@@ -70,11 +72,11 @@ function Timestamp({value}: { value: number }) {
           isPast ? "text-destructive font-medium" : "text-foreground",
         )}
       >
-        {relative}
+        {longDate}
       </span>
       <span
         className="invisible group-hover/ts:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 text-xs rounded-md bg-foreground text-background whitespace-nowrap z-50 pointer-events-none">
-        {absolute}
+        {relative}
       </span>
     </span>
   );
@@ -210,9 +212,11 @@ function ServiceForm({
 function DeviceRow({
                      device,
                      app_key,
+                     compact,
                    }: {
   device: Device;
   app_key: string;
+  compact?: boolean;
 }) {
   const {mutate, isPending} = useAgentSendUiCmd(device.id) as any;
   const [expanded, setExpanded] = useState(false);
@@ -248,23 +252,59 @@ function DeviceRow({
           )}
         </td>
 
-        {/* Hours till service – desktop only */}
-        <td className="hidden md:table-cell p-2 align-middle whitespace-nowrap text-center">
-          {hoursDisplay != null ? (
-            <span>{hoursDisplay}</span>
-          ) : (
-            <span className="text-muted-foreground">-</span>
-          )}
-        </td>
+        {!compact && (
+          <>
+            {/* Hours till service */}
+            <td className="p-2 align-middle whitespace-nowrap text-center">
+              {hoursDisplay != null ? (
+                <span>{hoursDisplay}</span>
+              ) : (
+                <span className="text-muted-foreground">-</span>
+              )}
+            </td>
 
-        {/* Kms till service – desktop only */}
-        <td className="hidden md:table-cell p-2 align-middle whitespace-nowrap text-center">
-          {kmsDisplay != null ? (
-            <span>{kmsDisplay}</span>
-          ) : (
-            <span className="text-muted-foreground">-</span>
-          )}
-        </td>
+            {/* Kms till service */}
+            <td className="p-2 align-middle whitespace-nowrap text-center">
+              {kmsDisplay != null ? (
+                <span>{kmsDisplay}</span>
+              ) : (
+                <span className="text-muted-foreground">-</span>
+              )}
+            </td>
+
+            {/* Last service date */}
+            <td className="p-2 align-middle whitespace-nowrap text-center">
+              {tags.last_service_date != null ? (
+                <span className="group/ls relative inline-block cursor-default">
+                  {dayjs(tags.last_service_date).format("DD/MM/YY")}
+                  <span className="invisible group-hover/ls:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 text-xs rounded-md bg-foreground text-background whitespace-nowrap z-50 pointer-events-none">
+                    {dayjs(tags.last_service_date).fromNow()}
+                  </span>
+                </span>
+              ) : (
+                <span className="text-muted-foreground">-</span>
+              )}
+            </td>
+
+            {/* Engine hours */}
+            <td className="p-2 align-middle whitespace-nowrap text-center">
+              {tags.engine_hours != null ? (
+                <span>{Math.round(tags.engine_hours)}</span>
+              ) : (
+                <span className="text-muted-foreground">-</span>
+              )}
+            </td>
+
+            {/* Last service hours */}
+            <td className="p-2 align-middle whitespace-nowrap text-center">
+              {tags.last_service_hours != null ? (
+                <span>{Math.round(tags.last_service_hours)}</span>
+              ) : (
+                <span className="text-muted-foreground">-</span>
+              )}
+            </td>
+          </>
+        )}
 
         {/* Service button */}
         <td className="p-2 align-middle whitespace-nowrap text-center">
@@ -276,13 +316,13 @@ function DeviceRow({
             disabled={isPending}
             className="inline-flex items-center justify-center whitespace-nowrap rounded-md border border-border text-xs/relaxed font-medium h-6 px-2 hover:bg-muted/50 hover:text-foreground transition-all disabled:pointer-events-none disabled:opacity-50 select-none"
           >
-            {isPending ? "..." : "Service"}
+            {isPending ? "..." : "Log Service"}
           </button>
         </td>
       </tr>
 
-      {/* Service dialog */}
-      {showServiceForm && (
+      {/* Service dialog — portaled out of table to avoid layout issues */}
+      {showServiceForm && createPortal(
         <ServiceForm
           mutate={mutate}
           isPending={isPending}
@@ -291,13 +331,14 @@ function DeviceRow({
           engineHours={tags.engine_hours}
           machineOdometer={tags.machine_odometer}
           onClose={() => setShowServiceForm(false)}
-        />
+        />,
+        document.body,
       )}
 
-      {/* Expanded detail row */}
-      {expanded && (
+      {/* Expanded detail row (compact mode only – shows hidden columns) */}
+      {compact && expanded && (
         <tr className="border-b bg-muted/30">
-          <td colSpan={5} className="px-4 py-2 text-xs">
+          <td colSpan={3} className="px-4 py-2 text-xs">
             <div className="flex flex-wrap gap-x-6 gap-y-1">
               <div>
                 <span className="text-muted-foreground">Hours till service: </span>
@@ -318,6 +359,94 @@ function DeviceRow({
         </tr>
       )}
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// ExpandIcon – simple SVG expand icon
+// ---------------------------------------------------------------------------
+
+function ExpandIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="15 3 21 3 21 9"/>
+      <polyline points="9 21 3 21 3 15"/>
+      <line x1="21" y1="3" x2="14" y2="10"/>
+      <line x1="3" y1="21" x2="10" y2="14"/>
+    </svg>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// FullscreenDialog – full-viewport overlay showing the complete table
+// ---------------------------------------------------------------------------
+
+function FullscreenDialog({
+  devices,
+  app_key,
+  onClose,
+}: {
+  devices: Device[];
+  app_key: string;
+  onClose: () => void;
+}) {
+  // Close on Escape key
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex flex-col bg-background">
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <h2 className="text-sm font-semibold">Maintenance Overview</h2>
+        <button
+          onClick={onClose}
+          className="inline-flex items-center justify-center rounded-md border border-border h-8 w-8 hover:bg-muted/50 transition-colors"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      {/* Full table */}
+      <div className="overflow-auto p-4">
+        <table className="w-full caption-bottom text-xs">
+          <thead className="[&_tr]:border-b">
+          <tr className="border-b transition-colors">
+            <th className="text-foreground h-10 px-2 text-center align-middle font-medium whitespace-nowrap">Device</th>
+            <th className="text-foreground h-10 px-2 text-center align-middle font-medium whitespace-nowrap">Next Service Due</th>
+            <th className="text-foreground h-10 px-2 text-center align-middle font-medium whitespace-nowrap">Hours Till Service</th>
+            <th className="text-foreground h-10 px-2 text-center align-middle font-medium whitespace-nowrap">Kms Till Service</th>
+            <th className="text-foreground h-10 px-2 text-center align-middle font-medium whitespace-nowrap">Last Service</th>
+            <th className="text-foreground h-10 px-2 text-center align-middle font-medium whitespace-nowrap">Engine Hours</th>
+            <th className="text-foreground h-10 px-2 text-center align-middle font-medium whitespace-nowrap">Last Service Hours</th>
+            <th className="text-foreground h-10 px-2 text-center align-middle font-medium whitespace-nowrap">Action</th>
+          </tr>
+          </thead>
+          <tbody className="[&_tr:last-child]:border-0">
+          {devices.length === 0 ? (
+            <tr>
+              <td colSpan={8} className="p-4 text-center text-muted-foreground">No devices configured</td>
+            </tr>
+          ) : (
+            devices.map((device) => (
+              <DeviceRow key={device.id} device={device} app_key={app_key} />
+            ))
+          )}
+          </tbody>
+        </table>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -356,6 +485,7 @@ function MaintenanceDashboardWidgetInner({uiElement}: { uiElement: UiRemoteCompo
         hours_till_next_service: tagValues?.hours_till_next_service,
         kms_till_next_service: tagValues?.kms_till_next_service,
         last_service_date: tagValues?.last_service_date,
+        last_service_hours: tagValues?.last_service_hours ?? null,
         engine_hours: tagValues?.engine_hours ?? null,
         machine_odometer: tagValues?.machine_odometer ?? null,
       } as DeviceTags;
@@ -372,6 +502,8 @@ function MaintenanceDashboardWidgetInner({uiElement}: { uiElement: UiRemoteCompo
     return () => clearInterval(id);
   }, []);
 
+  const [fullscreen, setFullscreen] = useState(false);
+
   // --- Render ---
 
   if (configLoading || aggregatesLoading) {
@@ -384,7 +516,17 @@ function MaintenanceDashboardWidgetInner({uiElement}: { uiElement: UiRemoteCompo
 
   return (
     <>
-      <div className="relative">
+      <div className="relative w-full overflow-x-auto">
+        {/* Expand button – top right */}
+        <button
+          onClick={() => setFullscreen(true)}
+          className="absolute top-1 right-1 z-10 inline-flex items-center justify-center rounded-md border border-border h-7 w-7 hover:bg-muted/50 transition-colors text-muted-foreground hover:text-foreground"
+          title="Expand table"
+        >
+          <ExpandIcon />
+        </button>
+
+        {/* Compact table – Device, Next Service Due, Action */}
         <table className="w-full caption-bottom text-xs">
           <thead className="[&_tr]:border-b">
           <tr className="border-b transition-colors">
@@ -393,14 +535,6 @@ function MaintenanceDashboardWidgetInner({uiElement}: { uiElement: UiRemoteCompo
             </th>
             <th className="text-foreground h-10 px-2 text-center align-middle font-medium whitespace-nowrap">
               Next Service Due
-            </th>
-            <th
-              className="hidden md:table-cell text-foreground h-10 px-2 text-center align-middle font-medium whitespace-nowrap">
-              Hours Till Service
-            </th>
-            <th
-              className="hidden md:table-cell text-foreground h-10 px-2 text-center align-middle font-medium whitespace-nowrap">
-              Kms Till Service
             </th>
             <th className="text-foreground h-10 px-2 text-center align-middle font-medium whitespace-nowrap">
               Action
@@ -412,26 +546,34 @@ function MaintenanceDashboardWidgetInner({uiElement}: { uiElement: UiRemoteCompo
           {deviceData.length === 0 ? (
             <tr>
               <td
-                colSpan={5}
+                colSpan={3}
                 className="p-4 text-center text-muted-foreground"
               >
                 No devices configured
               </td>
             </tr>
           ) : (
-            deviceData.map((device) => {
-              return (
-                <DeviceRow
-                  key={device.id}
-                  device={device}
-                  app_key={appKey}
-                />
-              );
-            })
+            deviceData.map((device) => (
+              <DeviceRow
+                key={device.id}
+                device={device}
+                app_key={appKey}
+                compact
+              />
+            ))
           )}
           </tbody>
         </table>
       </div>
+
+      {/* Fullscreen dialog with all columns */}
+      {fullscreen && (
+        <FullscreenDialog
+          devices={deviceData}
+          app_key={appKey}
+          onClose={() => setFullscreen(false)}
+        />
+      )}
     </>
   );
 }
