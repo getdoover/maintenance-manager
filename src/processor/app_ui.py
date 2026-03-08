@@ -3,11 +3,15 @@ from pydoover.ui import RemoteComponent
 
 from .app_config import MaintenanceManagerConfig
 
-WIDGET_URL = "https://getdoover.github.io/maintenance-manager/MaintenanceDashboardWidget.js"
+WIDGET_URL = (
+    "https://getdoover.github.io/maintenance-manager/MaintenanceDashboardWidget.js"
+)
 
 
 class MaintenanceManagerUI:
-    def __init__(self, config: MaintenanceManagerConfig):
+    def __init__(
+        self, config: MaintenanceManagerConfig, device_name: str, app_key: str
+    ):
         self.next_service_est = ui.Timestamp(
             "nextServiceEst",
             "Next Service Estimate",
@@ -116,7 +120,9 @@ class MaintenanceManagerUI:
         )
 
         self.tabs = ui.TabContainer(
-            name="tabs", display_name="Tabs", children=[service_info, engine_info, last_service_info]
+            name="tabs",
+            display_name="Tabs",
+            children=[service_info, engine_info, last_service_info],
         )
 
         # --- Config submodule ---
@@ -140,11 +146,11 @@ class MaintenanceManagerUI:
             display_name="Log Service",
             component_url=WIDGET_URL,
             module="./LogServiceWidget",
+            device_name=device_name,
+            app_key=app_key,
         )
         self.config_submodule.add_children(
-            self.set_hours,
-            self.set_kms,
-            self.log_service_widget
+            self.set_hours, self.set_kms, self.log_service_widget
         )
 
     def fetch(self):

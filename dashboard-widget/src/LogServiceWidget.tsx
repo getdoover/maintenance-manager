@@ -1,5 +1,5 @@
 import "./styles.css";
-import {useState, useMemo} from "react";
+import {useState} from "react";
 import {createPortal} from "react-dom";
 import RemoteComponentWrapper from "customer_site/RemoteComponentWrapper";
 import {useAgentChannel, useAgentSendUiCmd} from "customer_site/hooks";
@@ -19,13 +19,13 @@ dayjs.extend(localizedFormat);
 // ---------------------------------------------------------------------------
 
 function ServiceForm({
-  mutate,
-  isPending,
-  deviceName,
-  engineHours,
-  machineOdometer,
-  onClose,
-}: {
+                       mutate,
+                       isPending,
+                       deviceName,
+                       engineHours,
+                       machineOdometer,
+                       onClose,
+                     }: {
   mutate: (payload: any) => void;
   isPending: boolean;
   deviceName: string;
@@ -75,7 +75,7 @@ function ServiceForm({
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/50" onClick={onClose}/>
       <div className="relative z-[51] w-full max-w-md rounded-lg border border-border bg-background p-6 shadow-lg">
         <h3 className="text-sm font-semibold mb-1">{deviceName}</h3>
         <p className="text-xs text-muted-foreground mb-4">Record a service for this device.</p>
@@ -140,41 +140,32 @@ function ServiceForm({
 
 export interface UiRemoteComponentLogService {
   app_key: string;
-  manager_app_key: string;
+  device_name: string;
 }
 
-function LogServiceWidgetInner({uiElement}: { uiElement: UiRemoteComponentLogService }) {
+function LogServiceWidgetInner({uiElement, ui_element_props}: {
+  uiElement: UiRemoteComponentLogService;
+  ui_element_props?: any
+}) {
   const {agentId} = useRemoteParams();
   const {mutate, isPending} = useAgentSendUiCmd(agentId) as any;
   const [showForm, setShowForm] = useState(false);
 
-  const appKey = uiElement.manager_app_key ?? uiElement.app_key;
-
-  // Read deployment config to get device display name
-  const {aggregate: deploymentConfig} = useAgentChannel(agentId, "deployment_config");
+  const {app_key, device_name} = uiElement;
 
   // Read tag values to get current engine hours / odometer
   const {aggregate: tagValues} = useAgentChannel(agentId, "tag_values");
 
-  const deviceName = useMemo(() => {
-    try {
-      const deviceMap = deploymentConfig?.applications?.[uiElement.app_key]?.DEVICE_MAP as
-        Record<string, { display_name: string }> | undefined;
-      return deviceMap?.[agentId!]?.display_name ?? "This Device";
-    } catch {
-      return "This Device";
-    }
-  }, [deploymentConfig, uiElement.app_key, agentId]);
-
-  const engineHours = tagValues?.data?.[appKey]?.engine_hours ?? null;
-  const machineOdometer = tagValues?.data?.[appKey]?.machine_odometer ?? null;
+  const deviceName = device_name ?? ui_element_props?.ui?.display_name ?? "This Device";
+  const engineHours = tagValues?.[app_key]?.engine_hours ?? null;
+  const machineOdometer = tagValues?.[app_key]?.machine_odometer ?? null;
 
   return (
     <>
       <button
         onClick={() => setShowForm(true)}
         disabled={isPending}
-        className="inline-flex items-center justify-center whitespace-nowrap rounded-md border border-border text-xs/relaxed font-medium h-6 px-2 hover:bg-muted/50 hover:text-foreground transition-all disabled:pointer-events-none disabled:opacity-50 select-none"
+        className="inline-flex w-full items-center justify-center whitespace-nowrap rounded-md border border-border text-sm font-medium h-9 px-4 hover:bg-muted/50 hover:text-foreground transition-all disabled:pointer-events-none disabled:opacity-50 select-none"
       >
         {isPending ? "..." : "Log Service"}
       </button>

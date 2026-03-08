@@ -20,7 +20,7 @@ class MaintenanceManagerApplication(Application):
     config: MaintenanceManagerConfig
 
     async def setup(self):
-        self.ui = MaintenanceManagerUI(self.config)
+        self.ui = MaintenanceManagerUI(self.config, self.display_name, self.app_key)
         self.ui_manager.add_children(*self.ui.fetch())
         self.ui_manager.set_position(self.config.position.value)
         self.ui_manager.register_interactions(self)
