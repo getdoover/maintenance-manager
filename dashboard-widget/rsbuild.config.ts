@@ -13,6 +13,7 @@ const mfConfig = createModuleFederationConfig({
     },
     exposes: {
         './MaintenanceDashboardWidget': './src/MaintenanceDashboardWidget',
+        './LogServiceWidget': './src/LogServiceWidget',
     },
     shared: {
         react: {singleton: true, requiredVersion: '^18.3.1', eager: true},

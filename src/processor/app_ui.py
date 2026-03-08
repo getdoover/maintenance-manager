@@ -1,6 +1,9 @@
 from pydoover import ui
+from pydoover.ui import RemoteComponent
 
 from .app_config import MaintenanceManagerConfig
+
+WIDGET_URL = "https://getdoover.github.io/maintenance-manager/MaintenanceDashboardWidget.js"
 
 
 class MaintenanceManagerUI:
@@ -132,13 +135,16 @@ class MaintenanceManagerUI:
             icon="road",
             requires_confirm=True,
         )
-        self.set_last_service_at = ui.DateTimeParameter(
-            "set_last_service_at", "Set Last Service", requires_confirm=True
+        self.log_service_widget = RemoteComponent(
+            name="LogServiceWidget",
+            display_name="Log Service",
+            component_url=WIDGET_URL,
+            module="./LogServiceWidget",
         )
         self.config_submodule.add_children(
             self.set_hours,
             self.set_kms,
-            self.set_last_service_at
+            self.log_service_widget
         )
 
     def fetch(self):

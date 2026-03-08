@@ -55,6 +55,79 @@ interface Device {
 }
 
 // ---------------------------------------------------------------------------
+// Sorting
+// ---------------------------------------------------------------------------
+
+type SortKey =
+  | "display_name"
+  | "next_service_est"
+  | "hours_till_next_service"
+  | "kms_till_next_service"
+  | "last_service_date"
+  | "engine_hours"
+  | "last_service_hours";
+
+type SortDir = "asc" | "desc";
+
+function getSortValue(device: Device, key: SortKey): number | string | null {
+  if (key === "display_name") return device.display_name.toLowerCase();
+  return device.tags[key] ?? null;
+}
+
+function sortDevices(devices: Device[], key: SortKey, dir: SortDir): Device[] {
+  return [...devices].sort((a, b) => {
+    const av = getSortValue(a, key);
+    const bv = getSortValue(b, key);
+    // nulls always last
+    if (av == null && bv == null) return 0;
+    if (av == null) return 1;
+    if (bv == null) return -1;
+    const cmp = av < bv ? -1 : av > bv ? 1 : 0;
+    return dir === "asc" ? cmp : -cmp;
+  });
+}
+
+function SortIcon({active, dir}: { active: boolean; dir: SortDir }) {
+  if (!active) return null;
+  return (
+    <svg className="inline ml-1" xmlns="http://www.w3.org/2000/svg" width="12" height="12"
+         viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+         strokeLinejoin="round">
+      {dir === "asc"
+        ? <path d="m7 10 5-5 5 5"/>
+        : <path d="m7 14 5 5 5-5"/>}
+    </svg>
+  );
+}
+
+function SortableHeader({
+  label,
+  sortKey,
+  currentKey,
+  currentDir,
+  onSort,
+}: {
+  label: string;
+  sortKey: SortKey;
+  currentKey: SortKey;
+  currentDir: SortDir;
+  onSort: (key: SortKey) => void;
+}) {
+  const active = currentKey === sortKey;
+  return (
+    <th
+      className="text-foreground h-10 px-2 align-middle font-medium whitespace-nowrap cursor-pointer select-none hover:bg-muted/50 transition-colors"
+      onClick={() => onSort(sortKey)}
+    >
+      <span className="inline-flex items-center justify-center gap-0.5">
+        {label}
+        <SortIcon active={active} dir={active ? currentDir : "asc"} />
+      </span>
+    </th>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Timestamp (relative text + absolute tooltip on hover)
 // ---------------------------------------------------------------------------
 
@@ -386,10 +459,16 @@ function FullscreenDialog({
   devices,
   app_key,
   onClose,
+  sortKey,
+  sortDir,
+  onSort,
 }: {
   devices: Device[];
   app_key: string;
   onClose: () => void;
+  sortKey: SortKey;
+  sortDir: SortDir;
+  onSort: (key: SortKey) => void;
 }) {
   // Close on Escape key
   useEffect(() => {
@@ -422,13 +501,13 @@ function FullscreenDialog({
         <table className="w-full caption-bottom text-xs">
           <thead className="[&_tr]:border-b">
           <tr className="border-b transition-colors">
-            <th className="text-foreground h-10 px-2 text-center align-middle font-medium whitespace-nowrap">Device</th>
-            <th className="text-foreground h-10 px-2 text-center align-middle font-medium whitespace-nowrap">Next Service Due</th>
-            <th className="text-foreground h-10 px-2 text-center align-middle font-medium whitespace-nowrap">Hours Till Service</th>
-            <th className="text-foreground h-10 px-2 text-center align-middle font-medium whitespace-nowrap">Kms Till Service</th>
-            <th className="text-foreground h-10 px-2 text-center align-middle font-medium whitespace-nowrap">Last Service</th>
-            <th className="text-foreground h-10 px-2 text-center align-middle font-medium whitespace-nowrap">Engine Hours</th>
-            <th className="text-foreground h-10 px-2 text-center align-middle font-medium whitespace-nowrap">Last Service Hours</th>
+            <SortableHeader label="Device" sortKey="display_name" currentKey={sortKey} currentDir={sortDir} onSort={onSort} />
+            <SortableHeader label="Next Service Due" sortKey="next_service_est" currentKey={sortKey} currentDir={sortDir} onSort={onSort} />
+            <SortableHeader label="Hours Till Service" sortKey="hours_till_next_service" currentKey={sortKey} currentDir={sortDir} onSort={onSort} />
+            <SortableHeader label="Kms Till Service" sortKey="kms_till_next_service" currentKey={sortKey} currentDir={sortDir} onSort={onSort} />
+            <SortableHeader label="Last Service" sortKey="last_service_date" currentKey={sortKey} currentDir={sortDir} onSort={onSort} />
+            <SortableHeader label="Engine Hours" sortKey="engine_hours" currentKey={sortKey} currentDir={sortDir} onSort={onSort} />
+            <SortableHeader label="Last Service Hours" sortKey="last_service_hours" currentKey={sortKey} currentDir={sortDir} onSort={onSort} />
             <th className="text-foreground h-10 px-2 text-center align-middle font-medium whitespace-nowrap">Action</th>
           </tr>
           </thead>
@@ -492,8 +571,26 @@ function MaintenanceDashboardWidgetInner({uiElement}: { uiElement: UiRemoteCompo
       const newDevice = {...device, tags};
       deviceMap.push(newDevice);
     }
-    return deviceMap.sort((a, b) => a.tags.next_service_est - b.tags.next_service_est)
+    return deviceMap;
   }, [devices, aggregates])
+
+  // Sort state – default to next service due ascending
+  const [sortKey, setSortKey] = useState<SortKey>("next_service_est");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  const handleSort = (key: SortKey) => {
+    if (key === sortKey) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
+  const sortedDevices = useMemo(
+    () => sortDevices(deviceData, sortKey, sortDir),
+    [deviceData, sortKey, sortDir],
+  );
 
   // Keep relative timestamps fresh
   const [, setTick] = useState(0);
@@ -530,12 +627,8 @@ function MaintenanceDashboardWidgetInner({uiElement}: { uiElement: UiRemoteCompo
         <table className="w-full caption-bottom text-xs">
           <thead className="[&_tr]:border-b">
           <tr className="border-b transition-colors">
-            <th className="text-foreground h-10 px-2 text-center align-middle font-medium whitespace-nowrap">
-              Device
-            </th>
-            <th className="text-foreground h-10 px-2 text-center align-middle font-medium whitespace-nowrap">
-              Next Service Due
-            </th>
+            <SortableHeader label="Device" sortKey="display_name" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />
+            <SortableHeader label="Next Service Due" sortKey="next_service_est" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />
             <th className="text-foreground h-10 px-2 text-center align-middle font-medium whitespace-nowrap">
               Action
             </th>
@@ -543,7 +636,7 @@ function MaintenanceDashboardWidgetInner({uiElement}: { uiElement: UiRemoteCompo
           </thead>
 
           <tbody className="[&_tr:last-child]:border-0">
-          {deviceData.length === 0 ? (
+          {sortedDevices.length === 0 ? (
             <tr>
               <td
                 colSpan={3}
@@ -553,7 +646,7 @@ function MaintenanceDashboardWidgetInner({uiElement}: { uiElement: UiRemoteCompo
               </td>
             </tr>
           ) : (
-            deviceData.map((device) => (
+            sortedDevices.map((device) => (
               <DeviceRow
                 key={device.id}
                 device={device}
@@ -569,9 +662,12 @@ function MaintenanceDashboardWidgetInner({uiElement}: { uiElement: UiRemoteCompo
       {/* Fullscreen dialog with all columns */}
       {fullscreen && (
         <FullscreenDialog
-          devices={deviceData}
+          devices={sortedDevices}
           app_key={appKey}
           onClose={() => setFullscreen(false)}
+          sortKey={sortKey}
+          sortDir={sortDir}
+          onSort={handleSort}
         />
       )}
     </>
