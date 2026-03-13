@@ -5,7 +5,7 @@ import time
 from datetime import datetime, timedelta, timezone
 
 from pydoover.cloud.processor.application import Application
-from pydoover.cloud.processor.types import MessageCreateEvent
+from pydoover.cloud.processor.types import MessageCreateEvent, AggregateUpdateEvent
 from pydoover import ui
 
 from .app_config import MaintenanceManagerConfig
@@ -25,6 +25,11 @@ class MaintenanceManagerApplication(Application):
         self.ui_manager.set_position(self.config.position.value)
         self.ui_manager.register_interactions(self)
         self.ui_manager.register_callbacks(self)
+
+    async def pre_hook_filter(self, event):
+        if isinstance(event, (MessageCreateEvent, AggregateUpdateEvent)) and event.channel_name == "tag_values" and self.config.tracker_app_key.value not in event.request_data:
+            log.info("Filtering event for tag_value that does not update the tracker app.")
+            return
 
     async def on_message_create(self, event: MessageCreateEvent):
         if event.channel_name == "ui_cmds":
