@@ -26,10 +26,19 @@ class MaintenanceManagerApplication(Application):
         self.ui_manager.register_interactions(self)
         self.ui_manager.register_callbacks(self)
 
-    async def pre_hook_filter(self, event):
-        if isinstance(event, (MessageCreateEvent, AggregateUpdateEvent)) and event.channel_name == "tag_values" and self.config.tracker_app_key.value not in event.request_data:
-            log.info("Filtering event for tag_value that does not update the tracker app.")
-            return
+    async def post_setup_filter(self, event):
+        # this looks really ugly but basically just check if it's a tag_values channel
+        if (
+            isinstance(event, AggregateUpdateEvent)
+            and event.channel.name == "tag_values"
+        ) or (
+            isinstance(event, MessageCreateEvent) and event.channel_name == "tag_values"
+        ):
+            if self.config.tracker_app_key.value not in event.request_data:
+                log.info(
+                    "Filtering event for tag_value that does not update the tracker app."
+                )
+                return
 
     async def on_message_create(self, event: MessageCreateEvent):
         if event.channel_name == "ui_cmds":
@@ -244,7 +253,9 @@ class MaintenanceManagerApplication(Application):
         else:
             log.info(f"Unknown request: {name}")
 
-    async def _record_service(self, service_dt, engine_hours=None, machine_odometer=None):
+    async def _record_service(
+        self, service_dt, engine_hours=None, machine_odometer=None
+    ):
         """Record a service at the given datetime.
 
         If engine_hours or machine_odometer are not provided, fetch the
@@ -327,11 +338,15 @@ class MaintenanceManagerApplication(Application):
             return
 
         try:
-            device_name = self.received_deployment_config["DEVICE_MAP"][str(self.agent_id)]["display_name"]
+            device_name = self.received_deployment_config["DEVICE_MAP"][
+                str(self.agent_id)
+            ]["display_name"]
         except (KeyError, TypeError):
             device_name = "Unknown device"
 
-        message = f"{device_name} is due for a service in {int(days_till_service_due)} days"
+        message = (
+            f"{device_name} is due for a service in {int(days_till_service_due)} days"
+        )
 
         log.info(f"Sending service notification: {message}")
         await self.api.publish_message(
