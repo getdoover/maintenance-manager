@@ -26,33 +26,47 @@ class MaintenanceManagerApplication(Application):
         self.ui_manager.register_interactions(self)
         self.ui_manager.register_callbacks(self)
 
+    async def pre_hook_filter(self, event):
+        if isinstance(event, MessageCreateEvent) and event.channel_name != "ui_cmds":
+            log.info("Filtering event for channel that is not ui_cmds with a message create event.")
+            return False
+
+        if (
+            isinstance(event, AggregateUpdateEvent)
+            and event.channel.name != "tag_values"
+        ):
+            log.info("Filtering event for channel that is not tag_values with an aggregate update event.")
+            return False
+
+        return True
+
     async def post_setup_filter(self, event):
-        # this looks really ugly but basically just check if it's a tag_values channel
         if (
             isinstance(event, AggregateUpdateEvent)
             and event.channel.name == "tag_values"
-        ) or (
-            isinstance(event, MessageCreateEvent) and event.channel_name == "tag_values"
+            and self.config.tracker_app_key.value not in event.request_data.data
         ):
-            if self.config.tracker_app_key.value not in event.request_data:
-                log.info(
-                    "Filtering event for tag_value that does not update the tracker app."
-                )
-                return
+            log.info(
+                "Filtering event for tag_value that does not update the tracker app."
+            )
+            return False
+
+        return True
 
     async def on_message_create(self, event: MessageCreateEvent):
-        if event.channel_name == "ui_cmds":
-            msg_data = event.message.data or {}
+        # see pre_hook_filter - this will only include ui_cmds messages
+        msg_data = event.message.data or {}
 
-            # Handle request-style messages (e.g. from dashboard)
-            request = msg_data.get("request")
-            if request and isinstance(request, dict):
-                await self._handle_request(request)
-            else:
-                log.info(f"Handling ui_cmd: {msg_data}")
-                await self.ui_manager.on_command_update_async(None, msg_data)
-                await self.ui_manager.push_async(publish_fields=["currentValue"])
+        # Handle request-style messages (e.g. from dashboard)
+        request = msg_data.get("request")
+        if request and isinstance(request, dict):
+            await self._handle_request(request)
+        else:
+            log.info(f"Handling ui_cmd: {msg_data}")
+            await self.ui_manager.on_command_update_async(None, msg_data)
+            await self.ui_manager.push_async(publish_fields=["currentValue"])
 
+    async def on_aggregate_update(self, event: AggregateUpdateEvent):
         # read tag values from the tracker app
         raw_run_hours = self.get_tracker_tag("run_hours", default=0)
         raw_odometer = self.get_tracker_tag("odometer_km", default=0)
