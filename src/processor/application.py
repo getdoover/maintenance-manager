@@ -61,9 +61,13 @@ class MaintenanceManagerApplication(Application):
         request = msg_data.get("request")
         if request and isinstance(request, dict):
             await self._handle_request(request)
+            # trigger manual aggregate update to re-sync UI
+            await self.on_aggregate_update(event)
         else:
             log.info(f"Handling ui_cmd: {msg_data}")
             await self.ui_manager.on_command_update_async(None, msg_data)
+            # as above
+            await self.on_aggregate_update(event)
             await self.ui_manager.push_async(publish_fields=["currentValue"])
 
     async def on_aggregate_update(self, event: AggregateUpdateEvent):
@@ -195,10 +199,12 @@ class MaintenanceManagerApplication(Application):
     @ui.callback("setHours")
     async def on_set_hours(self, element, new_value):
         if new_value is None:
+            log.info("New hours value is None")
             return
 
         raw_run_hours = self.get_tracker_tag("run_hours")
         if raw_run_hours is None:
+            log.info("Raw run hours is None.")
             return
 
         current_offset = await self.get_tag("hours_offset", default=0) or 0
