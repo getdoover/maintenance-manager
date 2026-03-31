@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from pydoover import ui
 from pydoover.ui import RemoteComponent
 
@@ -8,7 +10,7 @@ WIDGET_URL = (
 )
 
 
-class MaintenanceManagerUI:
+class MaintenanceManagerUI(ui.UI):
     tabs = ui.TabContainer(
         name="tabs",
         display_name="Tabs",
@@ -50,7 +52,6 @@ class MaintenanceManagerUI:
                 "Usage Info",
                 children=[
                     ui.NumericVariable(
-                        "aveHoursPerDay",
                         "Ave Hours Per Day",
                         precision=1,
                         units="hrs",
@@ -58,7 +59,6 @@ class MaintenanceManagerUI:
                         value=MaintenanceManagerTags.ave_hours_per_day,
                     ),
                     ui.NumericVariable(
-                        "aveKmsPerDay",
                         "Ave Kms Per Day",
                         precision=1,
                         units="km",
@@ -66,7 +66,6 @@ class MaintenanceManagerUI:
                         value=MaintenanceManagerTags.ave_kms_per_day,
                     ),
                     ui.NumericVariable(
-                        "engineHours",
                         "Engine Hours",
                         precision=1,
                         units="hrs",
@@ -74,7 +73,6 @@ class MaintenanceManagerUI:
                         value=MaintenanceManagerTags.engine_hours,
                     ),
                     ui.NumericVariable(
-                        "machineOdometer",
                         "Odometer",
                         precision=1,
                         units="km",
@@ -130,10 +128,15 @@ class MaintenanceManagerUI:
             RemoteComponent(
                 name="LogServiceWidget",
                 display_name="Log Service",
-                component_url=WIDGET_URL,
+                component_url="$config.app().dv_widget_url",
                 module="./LogServiceWidget",
                 device_name="$config.app().DISPLAY_NAME",
                 app_key="$config.app().APP_KEY",
             ),
         ],
+    )
+
+def export():
+    MaintenanceManagerUI(None, None, None).export(
+        Path(__file__).parents[2] / "doover_config.json", "maintenance_manager"
     )

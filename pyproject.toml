@@ -5,12 +5,14 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "pydoover>=0.4.13",
+    "pydoover==1.0.0a3",
 ]
 
 [project.scripts]
 export-config-manager = "processor.app_config:export"
 export-config-dashboard = "dashboard.app_config:export"
+export-ui-manager = "processor.app_ui:export"
+export-ui-dashboard = "dashboard.app_ui:export"
 
 [build-system]
 requires = ["hatchling"]

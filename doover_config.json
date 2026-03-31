@@ -8,7 +8,9 @@
         "description": "Simple maintenance manager user interface with predictive service scheduling",
         "long_description": "README.md",
         "depends_on": [],
-        "organisation_id": null,
+        "organisation_id": 152205550145242112,
+        "widget": "dashboard-widget/assets/MaintenanceDashboardWidget.js",
+        "build_widget_command": "npm --prefix dashboard-widget run build",
         "lambda_config": {
             "Environment": {},
             "Runtime": "python3.13",
@@ -59,7 +61,7 @@
                     ],
                     "x-required": false,
                     "description": "Position of Application in UI Structure. Smaller numbers are closer to the top.",
-                    "default": 50,
+                    "default": 100,
                     "x-position": 1,
                     "minimum": 0
                 },
@@ -73,9 +75,9 @@
                     "description": "The app key for the tracker application that provides tag values",
                     "x-position": 2
                 },
-                "service_interval_(hours)": {
+                "service_interval_hours": {
                     "title": "Service Interval (hours)",
-                    "x-name": "service_interval_(hours)",
+                    "x-name": "service_interval_hours",
                     "x-hidden": false,
                     "type": [
                         "number",
@@ -87,9 +89,9 @@
                     "x-position": 3,
                     "exclusiveMinimum": 0
                 },
-                "service_interval_(kms)": {
+                "service_interval_kms": {
                     "title": "Service Interval (kms)",
-                    "x-name": "service_interval_(kms)",
+                    "x-name": "service_interval_kms",
                     "x-hidden": false,
                     "type": [
                         "number",
@@ -101,9 +103,9 @@
                     "x-position": 4,
                     "exclusiveMinimum": 0
                 },
-                "service_interval_(months)": {
+                "service_interval_months": {
                     "title": "Service Interval (months)",
-                    "x-name": "service_interval_(months)",
+                    "x-name": "service_interval_months",
                     "x-hidden": false,
                     "type": [
                         "number",
@@ -149,19 +151,274 @@
                 "tracker_app_key"
             ]
         },
-        "id": "152261578199196431",
+        "id": 152261578199196431,
         "key": null,
-        "owner_org_id": "152205550145242112",
+        "owner_org_id": 152205550145242112,
         "code_repo_id": null,
         "container_registry_profile_id": null,
         "repo_branch": "main",
         "image_name": null,
         "icon_url": null,
         "banner_url": null,
-        "staging_config": {},
+        "staging_config": {
+            "organisation_id": null,
+            "lambda_config": {
+                "Environment": {
+                    "Variables": {
+                        "DOOVER_DATA_ENDPOINT": "https://data.staging.udoover.com/api"
+                    }
+                },
+                "Runtime": "python3.13",
+                "Timeout": 300,
+                "Handler": "src.processor.handler",
+                "MemorySize": 128,
+                "Architectures": [
+                    "arm64"
+                ]
+            },
+            "id": 164585666343099663
+        },
         "export_config_command": "export-config-manager",
+        "export_ui_command": "export-ui-manager",
         "run_command": null,
-        "lambda_arn": null
+        "lambda_arn": null,
+        "build_args": null,
+        "ui_schema": {
+            "displayString": "$config.app().APP_DISPLAY_NAME:string",
+            "hidden": "$config.app().hidden:boolean:false:boolean:false",
+            "position": "$config.app().position:number:50",
+            "icon": null,
+            "colour": null,
+            "defaultOpen": false,
+            "type": "uiApplication",
+            "name": "$config.app().APP_KEY",
+            "children": {
+                "tabs": {
+                    "name": "tabs",
+                    "type": "uiTabs",
+                    "displayString": "Tabs",
+                    "showActivity": true,
+                    "position": 65,
+                    "hidden": false,
+                    "children": {
+                        "service_info": {
+                            "name": "service_info",
+                            "type": "uiContainer",
+                            "displayString": "Service Info",
+                            "showActivity": true,
+                            "position": 55,
+                            "hidden": false,
+                            "children": {
+                                "next_service_estimate": {
+                                    "name": "next_service_estimate",
+                                    "type": "uiTimestamp",
+                                    "displayString": "Next Service Estimate",
+                                    "showActivity": true,
+                                    "position": 51,
+                                    "hidden": false,
+                                    "icon": "calendar-day",
+                                    "varType": "timestamp",
+                                    "currentValue": "$tag.app().next_service_est:number"
+                                },
+                                "kms_till_next_service": {
+                                    "name": "kms_till_next_service",
+                                    "type": "uiVariable",
+                                    "displayString": "Kms Till Next Service",
+                                    "showActivity": true,
+                                    "position": 52,
+                                    "hidden": false,
+                                    "units": "km",
+                                    "icon": "road",
+                                    "varType": "float",
+                                    "currentValue": "$tag.app().kms_till_next_service:number",
+                                    "decPrecision": 1
+                                },
+                                "hours_to_next_service": {
+                                    "name": "hours_to_next_service",
+                                    "type": "uiVariable",
+                                    "displayString": "Hours To Next Service",
+                                    "showActivity": true,
+                                    "position": 53,
+                                    "hidden": false,
+                                    "units": "hrs",
+                                    "icon": "clock",
+                                    "varType": "float",
+                                    "currentValue": "$tag.app().hours_till_next_service:number",
+                                    "decPrecision": 1
+                                },
+                                "days_to_next_service": {
+                                    "name": "days_to_next_service",
+                                    "type": "uiVariable",
+                                    "displayString": "Days To Next Service",
+                                    "showActivity": true,
+                                    "position": 54,
+                                    "hidden": false,
+                                    "units": "days",
+                                    "icon": "calendar",
+                                    "varType": "float",
+                                    "currentValue": "$tag.app().days_till_next_service:number",
+                                    "decPrecision": 0
+                                }
+                            }
+                        },
+                        "usage_info": {
+                            "name": "usage_info",
+                            "type": "uiContainer",
+                            "displayString": "Usage Info",
+                            "showActivity": true,
+                            "position": 60,
+                            "hidden": false,
+                            "children": {
+                                "ave_hours_per_day": {
+                                    "name": "ave_hours_per_day",
+                                    "type": "uiVariable",
+                                    "displayString": "Ave Hours Per Day",
+                                    "showActivity": true,
+                                    "position": 56,
+                                    "hidden": false,
+                                    "units": "hrs",
+                                    "icon": "clock",
+                                    "varType": "float",
+                                    "currentValue": "$tag.app().ave_hours_per_day:number",
+                                    "decPrecision": 1
+                                },
+                                "ave_kms_per_day": {
+                                    "name": "ave_kms_per_day",
+                                    "type": "uiVariable",
+                                    "displayString": "Ave Kms Per Day",
+                                    "showActivity": true,
+                                    "position": 57,
+                                    "hidden": false,
+                                    "units": "km",
+                                    "icon": "road",
+                                    "varType": "float",
+                                    "currentValue": "$tag.app().ave_kms_per_day:number",
+                                    "decPrecision": 1
+                                },
+                                "engine_hours": {
+                                    "name": "engine_hours",
+                                    "type": "uiVariable",
+                                    "displayString": "Engine Hours",
+                                    "showActivity": true,
+                                    "position": 58,
+                                    "hidden": false,
+                                    "units": "hrs",
+                                    "icon": "hourglass",
+                                    "varType": "float",
+                                    "currentValue": "$tag.app().engine_hours:number",
+                                    "decPrecision": 1
+                                },
+                                "odometer": {
+                                    "name": "odometer",
+                                    "type": "uiVariable",
+                                    "displayString": "Odometer",
+                                    "showActivity": true,
+                                    "position": 59,
+                                    "hidden": false,
+                                    "units": "km",
+                                    "icon": "gauge",
+                                    "varType": "float",
+                                    "currentValue": "$tag.app().machine_odometer:number",
+                                    "decPrecision": 1
+                                }
+                            }
+                        },
+                        "last_service": {
+                            "name": "last_service",
+                            "type": "uiContainer",
+                            "displayString": "Last Service",
+                            "showActivity": true,
+                            "position": 64,
+                            "hidden": false,
+                            "children": {
+                                "last_service_date": {
+                                    "name": "last_service_date",
+                                    "type": "uiTimestamp",
+                                    "displayString": "Last Service Date",
+                                    "showActivity": true,
+                                    "position": 61,
+                                    "hidden": false,
+                                    "icon": "calendar-day",
+                                    "varType": "timestamp",
+                                    "currentValue": "$tag.app().last_service_date:number"
+                                },
+                                "last_service_hours": {
+                                    "name": "last_service_hours",
+                                    "type": "uiVariable",
+                                    "displayString": "Last Service Hours",
+                                    "showActivity": true,
+                                    "position": 62,
+                                    "hidden": false,
+                                    "units": "hrs",
+                                    "icon": "clock",
+                                    "varType": "float",
+                                    "currentValue": "$tag.app().last_service_hours:number",
+                                    "decPrecision": 1
+                                },
+                                "last_service_odometer": {
+                                    "name": "last_service_odometer",
+                                    "type": "uiVariable",
+                                    "displayString": "Last Service Odometer",
+                                    "showActivity": true,
+                                    "position": 63,
+                                    "hidden": false,
+                                    "units": "km",
+                                    "icon": "road",
+                                    "varType": "float",
+                                    "currentValue": "$tag.app().last_service_odometer:number",
+                                    "decPrecision": 1
+                                }
+                            }
+                        }
+                    }
+                },
+                "config": {
+                    "name": "config",
+                    "type": "uiSubmodule",
+                    "displayString": "Config",
+                    "showActivity": true,
+                    "position": 69,
+                    "hidden": false,
+                    "icon": "gear",
+                    "children": {
+                        "set_machine_hours": {
+                            "name": "set_machine_hours",
+                            "type": "uiFloatInput",
+                            "displayString": "Set Machine Hours",
+                            "position": 66,
+                            "hidden": false,
+                            "units": "hrs",
+                            "icon": "clock",
+                            "requiresConfirm": true
+                        },
+                        "set_odometer": {
+                            "name": "set_odometer",
+                            "type": "uiFloatInput",
+                            "displayString": "Set Odometer",
+                            "position": 67,
+                            "hidden": false,
+                            "units": "km",
+                            "icon": "road",
+                            "requiresConfirm": true
+                        },
+                        "LogServiceWidget": {
+                            "name": "LogServiceWidget",
+                            "type": "uiRemoteComponent",
+                            "displayString": "Log Service",
+                            "showActivity": true,
+                            "componentUrl": "$config.app().dv_widget_url",
+                            "position": 68,
+                            "hidden": false,
+                            "children": {},
+                            "module": "./LogServiceWidget",
+                            "device_name": "$config.app().DISPLAY_NAME",
+                            "app_key": "$config.app().APP_KEY"
+                        }
+                    },
+                    "defaultOpen": true
+                }
+            }
+        }
     },
     "maintenance_dashboard": {
         "name": "maintenance_dashboard",
@@ -179,16 +436,36 @@
             "MemorySize": 128,
             "Handler": "src.dashboard.handler"
         },
-        "organisation_id": "152205550145242112",
+        "organisation_id": 152205550145242112,
         "key": null,
-        "owner_org_id": "152205550145242112",
+        "owner_org_id": 152205550145242112,
         "code_repo_id": null,
         "container_registry_profile_id": null,
         "repo_branch": "main",
         "image_name": null,
         "icon_url": "",
-        "staging_config": {},
+        "staging_config": {
+            "organisation_id": null,
+            "lambda_config": {
+                "Environment": {
+                    "Variables": {
+                        "DOOVER_DATA_ENDPOINT": "https://data.staging.udoover.com/api"
+                    }
+                },
+                "Runtime": "python3.13",
+                "Timeout": 300,
+                "Handler": "src.dashboard.handler",
+                "MemorySize": 128,
+                "Architectures": [
+                    "arm64"
+                ]
+            },
+            "id": 164589026655886605
+        },
         "export_config_command": "export-config-dashboard",
+        "export_ui_command": "export-ui-dashboard",
+        "build_widget_command": "npm --prefix dashboard-widget run build",
+        "widget": "dashboard-widget/assets/MaintenanceDashboardWidget.js",
         "run_command": null,
         "lambda_arn": null,
         "config_schema": {
@@ -305,6 +582,31 @@
             ]
         },
         "banner_url": null,
-        "id": "152315649572528899"
+        "id": 152315649572528899,
+        "ui_schema": {
+            "displayString": "$config.app().APP_DISPLAY_NAME:string",
+            "hidden": "$config.app().hidden:boolean:false:boolean:false",
+            "position": "$config.app().position:number:50",
+            "icon": null,
+            "colour": null,
+            "defaultOpen": true,
+            "type": "uiApplication",
+            "name": "$config.app().APP_KEY",
+            "children": {
+                "MaintenanceDashboard": {
+                    "name": "MaintenanceDashboard",
+                    "type": "uiRemoteComponent",
+                    "displayString": "MaintenanceDashboard",
+                    "showActivity": true,
+                    "componentUrl": "$config.app().dv_widget_url",
+                    "position": 51,
+                    "hidden": false,
+                    "children": {},
+                    "app_key": "$config.app().APP_KEY",
+                    "manager_app_key": "maintenance_manager_1"
+                }
+            }
+        },
+        "build_args": null
     }
 }

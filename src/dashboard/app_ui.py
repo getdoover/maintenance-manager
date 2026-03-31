@@ -7,13 +7,13 @@ class MaintenanceDashboardUI(ui.UI, default_open=True):
     widget = ui.RemoteComponent(
         name="MaintenanceDashboard",
         display_name="MaintenanceDashboard",
-        component_url="https://getdoover.github.io/maintenance-manager/MaintenanceDashboardWidget.js",
+        component_url="$config.app().dv_widget_url",
         app_key="$config.app().APP_KEY",
         manager_app_key="maintenance_manager_1",
     )
 
 
 def export():
-    MaintenanceDashboardUI(None, None).export(
-        Path(__file__).parents[2] / "doover_config.json", "maintenance_manager"
+    MaintenanceDashboardUI(None, None, None).export(
+        Path(__file__).parents[2] / "doover_config.json", "maintenance_dashboard"
     )
