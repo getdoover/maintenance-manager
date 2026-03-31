@@ -218,7 +218,7 @@
                                     "hidden": false,
                                     "icon": "calendar-day",
                                     "varType": "timestamp",
-                                    "currentValue": "$tag.app().next_service_est:number"
+                                    "currentValue": "$tag.app().next_service_est:number:null"
                                 },
                                 "kms_till_next_service": {
                                     "name": "kms_till_next_service",
@@ -230,7 +230,7 @@
                                     "units": "km",
                                     "icon": "road",
                                     "varType": "float",
-                                    "currentValue": "$tag.app().kms_till_next_service:number",
+                                    "currentValue": "$tag.app().kms_till_next_service:number:null",
                                     "decPrecision": 1
                                 },
                                 "hours_to_next_service": {
@@ -243,7 +243,7 @@
                                     "units": "hrs",
                                     "icon": "clock",
                                     "varType": "float",
-                                    "currentValue": "$tag.app().hours_till_next_service:number",
+                                    "currentValue": "$tag.app().hours_till_next_service:number:null",
                                     "decPrecision": 1
                                 },
                                 "days_to_next_service": {
@@ -256,7 +256,7 @@
                                     "units": "days",
                                     "icon": "calendar",
                                     "varType": "float",
-                                    "currentValue": "$tag.app().days_till_next_service:number",
+                                    "currentValue": "$tag.app().days_till_next_service:number:null",
                                     "decPrecision": 0
                                 }
                             }
@@ -279,7 +279,7 @@
                                     "units": "hrs",
                                     "icon": "clock",
                                     "varType": "float",
-                                    "currentValue": "$tag.app().ave_hours_per_day:number",
+                                    "currentValue": "$tag.app().ave_hours_per_day:number:0",
                                     "decPrecision": 1
                                 },
                                 "ave_kms_per_day": {
@@ -292,7 +292,7 @@
                                     "units": "km",
                                     "icon": "road",
                                     "varType": "float",
-                                    "currentValue": "$tag.app().ave_kms_per_day:number",
+                                    "currentValue": "$tag.app().ave_kms_per_day:number:0",
                                     "decPrecision": 1
                                 },
                                 "engine_hours": {
@@ -305,7 +305,7 @@
                                     "units": "hrs",
                                     "icon": "hourglass",
                                     "varType": "float",
-                                    "currentValue": "$tag.app().engine_hours:number",
+                                    "currentValue": "$tag.app().engine_hours:number:0",
                                     "decPrecision": 1
                                 },
                                 "odometer": {
@@ -318,7 +318,7 @@
                                     "units": "km",
                                     "icon": "gauge",
                                     "varType": "float",
-                                    "currentValue": "$tag.app().machine_odometer:number",
+                                    "currentValue": "$tag.app().machine_odometer:number:null",
                                     "decPrecision": 1
                                 }
                             }
@@ -340,7 +340,7 @@
                                     "hidden": false,
                                     "icon": "calendar-day",
                                     "varType": "timestamp",
-                                    "currentValue": "$tag.app().last_service_date:number"
+                                    "currentValue": "$tag.app().last_service_date:number:null"
                                 },
                                 "last_service_hours": {
                                     "name": "last_service_hours",
@@ -352,7 +352,7 @@
                                     "units": "hrs",
                                     "icon": "clock",
                                     "varType": "float",
-                                    "currentValue": "$tag.app().last_service_hours:number",
+                                    "currentValue": "$tag.app().last_service_hours:number:null",
                                     "decPrecision": 1
                                 },
                                 "last_service_odometer": {
@@ -365,7 +365,7 @@
                                     "units": "km",
                                     "icon": "road",
                                     "varType": "float",
-                                    "currentValue": "$tag.app().last_service_odometer:number",
+                                    "currentValue": "$tag.app().last_service_odometer:number:null",
                                     "decPrecision": 1
                                 }
                             }
@@ -410,6 +410,7 @@
                             "position": 68,
                             "hidden": false,
                             "children": {},
+                            "scope": "MaintenanceDashboardWidget",
                             "module": "./LogServiceWidget",
                             "device_name": "$config.app().DISPLAY_NAME",
                             "app_key": "$config.app().APP_KEY"
@@ -602,6 +603,8 @@
                     "position": 51,
                     "hidden": false,
                     "children": {},
+                    "scope": "MaintenanceDashboardWidget",
+                    "module": "./MaintenanceDashboardWidget",
                     "app_key": "$config.app().APP_KEY",
                     "manager_app_key": "maintenance_manager_1"
                 }
