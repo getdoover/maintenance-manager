@@ -1,21 +1,18 @@
 import logging
 from datetime import datetime, timezone
 
-from pydoover.cloud.processor import Application
-from pydoover.cloud.processor.types import (
+from pydoover.processor import Application
+from pydoover.models import (
     AggregateUpdateEvent,
     ConnectionStatus,
     ConnectionDetermination,
 )
-from pydoover.ui import RemoteComponent
 
 from .app_config import MaintenanceDashboardConfig
+from .app_ui import MaintenanceDashboardUI
 
 log = logging.getLogger(__name__)
 
-WIDGET_NAME = "MaintenanceDashboard"
-HOSTING_URL = "https://getdoover.github.io/maintenance-manager/MaintenanceDashboardWidget.js"
-MANAGER_APP_KEY = "maintenance_manager_1"
 
 
 class MaintenanceDashboardApp(Application):
@@ -28,35 +25,11 @@ class MaintenanceDashboardApp(Application):
     """
 
     config: MaintenanceDashboardConfig
-
-    async def setup(self):
-        """Called once before processing any event."""
-        self.ui_manager.set_children(
-            [
-                RemoteComponent(
-                    name=WIDGET_NAME,
-                    display_name=WIDGET_NAME,
-                    component_url=HOSTING_URL,
-                    app_key=self.app_key,
-                    manager_app_key=MANAGER_APP_KEY,
-                ),
-            ]
-        )
+    config_cls = MaintenanceDashboardConfig
+    ui_cls = MaintenanceDashboardUI
 
     async def on_aggregate_update(self, event: AggregateUpdateEvent):
         """Triggered when deployment_config aggregate is updated (i.e. on deployment)."""
-        log.info(f"Aggregate update received for agent {self.agent_id}")
-        await self.ui_manager.push_async(even_if_empty=True)
-
-        # Patch defaultOpen onto our application so the widget is
-        # expanded on page load instead of collapsed.
-        await self.api.update_aggregate(
-            self.agent_id,
-            "ui_state",
-            {"state": {"children": {self.app_key: {"defaultOpen": True}}}},
-        )
-        log.info(f"Pushed ui_state with {WIDGET_NAME} widget entry")
-
         await self.api.ping_connection_at(
             self.agent_id,
             datetime.now(timezone.utc),

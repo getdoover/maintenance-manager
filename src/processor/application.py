@@ -4,12 +4,14 @@ import time
 
 from datetime import datetime, timedelta, timezone
 
-from pydoover.cloud.processor.application import Application
-from pydoover.cloud.processor.types import MessageCreateEvent, AggregateUpdateEvent
-from pydoover import ui
+from pydoover.processor.application import Application
+from pydoover.models import MessageCreateEvent, AggregateUpdateEvent
+from pydoover import ui, rpc
 
 from .app_config import MaintenanceManagerConfig
+from .app_tags import MaintenanceManagerTags
 from .app_ui import MaintenanceManagerUI
+from .models import ServiceLog
 
 log = logging.getLogger(__name__)
 
@@ -18,24 +20,26 @@ DEFAULT_AVE_CALC_DAYS = 14
 
 class MaintenanceManagerApplication(Application):
     config: MaintenanceManagerConfig
+    tags: MaintenanceManagerTags
 
-    async def setup(self):
-        self.ui = MaintenanceManagerUI(self.config, self.display_name, self.app_key)
-        self.ui_manager.add_children(*self.ui.fetch())
-        self.ui_manager.set_position(self.config.position.value)
-        self.ui_manager.register_interactions(self)
-        self.ui_manager.register_callbacks(self)
+    config_cls = MaintenanceManagerConfig
+    ui_cls = MaintenanceManagerUI
+    tags_cls = MaintenanceManagerTags
 
     async def pre_hook_filter(self, event):
-        if isinstance(event, MessageCreateEvent) and event.channel_name != "ui_cmds":
-            log.info("Filtering event for channel that is not ui_cmds with a message create event.")
+        if isinstance(event, MessageCreateEvent) and event.channel.name != "ui_cmds":
+            log.info(
+                "Filtering event for channel that is not ui_cmds with a message create event."
+            )
             return False
 
         if (
             isinstance(event, AggregateUpdateEvent)
             and event.channel.name != "tag_values"
         ):
-            log.info("Filtering event for channel that is not tag_values with an aggregate update event.")
+            log.info(
+                "Filtering event for channel that is not tag_values with an aggregate update event."
+            )
             return False
 
         return True
@@ -53,23 +57,6 @@ class MaintenanceManagerApplication(Application):
 
         return True
 
-    async def on_message_create(self, event: MessageCreateEvent):
-        # see pre_hook_filter - this will only include ui_cmds messages
-        msg_data = event.message.data or {}
-
-        # Handle request-style messages (e.g. from dashboard)
-        request = msg_data.get("request")
-        if request and isinstance(request, dict):
-            await self._handle_request(request)
-            # trigger manual aggregate update to re-sync UI
-            await self.on_aggregate_update(event)
-        else:
-            log.info(f"Handling ui_cmd: {msg_data}")
-            await self.ui_manager.on_command_update_async(None, msg_data)
-            # as above
-            await self.on_aggregate_update(event)
-            await self.ui_manager.push_async(publish_fields=["currentValue"])
-
     async def on_aggregate_update(self, event: AggregateUpdateEvent):
         # read tag values from the tracker app
         raw_run_hours = self.get_tracker_tag("run_hours", default=0)
@@ -79,11 +66,8 @@ class MaintenanceManagerApplication(Application):
         await self._ensure_defaults(raw_run_hours, raw_odometer)
 
         # apply offsets
-        hours_offset = await self.get_tag("hours_offset")
-        odo_offset = await self.get_tag("odo_offset")
-
-        engine_hours = raw_run_hours + hours_offset
-        machine_odometer = raw_odometer + odo_offset
+        engine_hours = raw_run_hours + self.tags.hours_offset.value
+        machine_odometer = raw_odometer + self.tags.odo_offset.value
 
         # compute average rates
         ave_rates = await self._get_average_rates(
@@ -92,9 +76,9 @@ class MaintenanceManagerApplication(Application):
         )
 
         # read service parameters from tags (set by reset_service action)
-        last_service_hours = await self.get_tag("last_service_hours")
-        last_service_kms = await self.get_tag("last_service_kms")
-        last_service_date_ts = await self.get_tag("last_service_date")
+        last_service_hours = self.tags.last_service_hours.value
+        last_service_kms = self.tags.last_service_odometer.value
+        last_service_date_ts = self.tags.last_service_date.value
 
         try:
             last_service_date = datetime.fromtimestamp(
@@ -154,152 +138,86 @@ class MaintenanceManagerApplication(Application):
             ).days
 
         # update UI
-        self.ui.next_service_est.update(next_service_est_dt)
-        self.ui.ave_hours_per_day.update(ave_rates["run_hours"])
-        self.ui.ave_kms_per_day.update(ave_rates["odometer"])
-
-        if days_till_service_due is not None:
-            self.ui.days_till_next_service.update(int(days_till_service_due))
-        else:
-            self.ui.days_till_next_service.update(None)
-
-        self.ui.engine_hours.update(engine_hours)
-        self.ui.hours_till_next_service.update(hours_till_next_service)
-        self.ui.machine_odometer.update(machine_odometer)
-        self.ui.kms_till_next_service.update(kms_till_next_service)
-
-        self.ui.last_service_date.update(last_service_date)
-        self.ui.last_service_hours.update(last_service_hours)
-        self.ui.last_service_kms.update(last_service_kms)
+        await self.tags.ave_hours_per_day.set(ave_rates["run_hours"])
+        await self.tags.ave_kms_per_day.set(ave_rates["odometer"])
 
         # save all display values as tags
-        await self.set_tag(
-            "next_service_est",
+        await self.tags.next_service_est.set(
             int(next_service_est_dt.timestamp() * 1000)
             if next_service_est_dt is not None
-            else None,
+            else None
         )
-        await self.set_tag(
-            "days_till_next_service",
+        await self.tags.days_till_next_service.set(
             int(days_till_service_due) if days_till_service_due is not None else None,
         )
-        await self.set_tag("engine_hours", engine_hours)
-        await self.set_tag("hours_till_next_service", hours_till_next_service)
-        await self.set_tag("machine_odometer", machine_odometer)
-        await self.set_tag("kms_till_next_service", kms_till_next_service)
+        await self.tags.engine_hours.set(engine_hours)
+        await self.tags.hours_till_next_service.set(hours_till_next_service)
+        await self.tags.machine_odometer.set(machine_odometer)
+        await self.tags.kms_till_next_service.set(kms_till_next_service)
 
         # check if we need to send a service-due notification
         await self._check_service_notification(days_till_service_due)
 
-        # push UI changes
-        await self.ui_manager.push_async()
-
     # --- UI Callbacks ---
 
-    @ui.callback("setHours")
-    async def on_set_hours(self, element, new_value):
-        if new_value is None:
-            log.info("New hours value is None")
-            return
-
+    @ui.handler("set_machine_hours", parser=int)
+    async def on_set_hours(self, ctx, new_value: int):
         raw_run_hours = self.get_tracker_tag("run_hours")
         if raw_run_hours is None:
             log.info("Raw run hours is None.")
             return
 
-        current_offset = await self.get_tag("hours_offset", default=0) or 0
+        current_offset = self.tags.hours_offset.value
         current_display = raw_run_hours + current_offset
         new_offset = new_value - current_display + current_offset
 
         log.info(f"Setting machine hours to {new_value} (offset: {new_offset})")
-        await self.set_tag("hours_offset", new_offset)
-        self.ui.set_hours.coerce(new_value)
+        await self.tags.hours_offset.set(new_offset)
+        # self.ui.set_hours.coerce(new_value)
 
-    @ui.callback("setKms")
-    async def on_set_kms(self, element, new_value):
-        if new_value is None:
-            return
-
+    @ui.handler("set_odometer", parser=int)
+    async def on_set_kms(self, ctx, new_value: int):
         raw_odometer = self.get_tracker_tag("odometer_km")
         if raw_odometer is None:
-            return
+            raise ValueError("Raw odometer is None.")
 
-        current_offset = await self.get_tag("odo_offset", default=0)
+        current_offset = self.tags.odo_offset.value
         current_display = raw_odometer + current_offset
         new_offset = new_value - current_display + current_offset
 
         log.info(f"Setting odometer to {new_value} (offset: {new_offset})")
-        await self.set_tag("odo_offset", new_offset)
-        self.ui.set_kms.coerce(new_value)
+        await self.tags.odo_offset.set(new_offset)
+        # self.ui.set_kms.coerce(new_value)
 
-    @ui.callback("set_last_service_at")
-    async def on_set_last_service_at(self, element, new_value):
-        if new_value is None:
-            return
-
-        # new_value is an ISO datetime string or ms timestamp from the DateTimeParameter
-        try:
-            if isinstance(new_value, (int, float)):
-                service_dt = datetime.fromtimestamp(new_value / 1000, tz=timezone.utc)
-            else:
-                service_dt = datetime.fromisoformat(str(new_value))
-                if service_dt.tzinfo is None:
-                    service_dt = service_dt.replace(tzinfo=timezone.utc)
-        except (TypeError, ValueError) as e:
-            log.warning(f"Invalid set_last_service_at value: {new_value} ({e})")
-            return
-
-        await self._record_service(service_dt)
-
-    async def _handle_request(self, request):
-        name = request.get("name")
-        values = request.get("values", {})
-
-        if name == "create_service":
-            dt_ms = values.get("dt")
-            if dt_ms is None:
-                log.warning("create_service request missing 'dt'")
-                return
-
-            try:
-                service_dt = datetime.fromtimestamp(dt_ms / 1000, tz=timezone.utc)
-            except (TypeError, ValueError, OSError) as e:
-                log.warning(f"Invalid create_service dt: {dt_ms} ({e})")
-                return
-
-            engine_hours = values.get("hours")
-            machine_odometer = values.get("kms")
-            await self._record_service(service_dt, engine_hours, machine_odometer)
-        else:
-            log.info(f"Unknown request: {name}")
-
-    async def _record_service(
-        self, service_dt, engine_hours=None, machine_odometer=None
-    ):
+    @rpc.handler("record_service", parser=ServiceLog.from_dict)
+    async def on_record_service(self, ctx, payload: ServiceLog):
         """Record a service at the given datetime.
 
         If engine_hours or machine_odometer are not provided, fetch the
         closest historical values from before the service time.
         """
-        service_date_ts = int(service_dt.timestamp() * 1000)
-
         # Fill in missing values from historical tag_values
-        if engine_hours is None or machine_odometer is None:
-            hist_hours, hist_odo = await self._get_historical_readings(service_dt)
-            if engine_hours is None:
+        engine_hours = payload.engine_hours
+        machine_odometer = payload.machine_odometer
+
+        if payload.engine_hours is None or payload.machine_odometer is None:
+            hist_hours, hist_odo = await self._get_historical_readings(
+                payload.service_dt
+            )
+            if payload.engine_hours is None:
                 engine_hours = hist_hours
-            if machine_odometer is None:
+            if payload.machine_odometer is None:
                 machine_odometer = hist_odo
 
         log.info(
-            f"Recording service: hours={engine_hours}, odo={machine_odometer}, date={service_date_ts}"
+            f"Recording service: hours={engine_hours}, odo={machine_odometer}, date={payload.service_dt}"
         )
-        await self.set_tag("last_service_date", service_date_ts)
-        await self.set_tag("service_notification_sent", False)
+        await self.tags.last_service_date.set(payload.service_dt.timestamp() * 1000)
+        await self.tags.service_notification_sent.set(False)
         if engine_hours is not None:
-            await self.set_tag("last_service_hours", engine_hours)
+            await self.tags.last_service_hours.set(engine_hours)
         if machine_odometer is not None:
-            await self.set_tag("last_service_kms", machine_odometer)
+            await self.tags.last_service_odometer.set(machine_odometer)
 
     async def _get_historical_readings(self, before_dt):
         """Fetch engine hours and odometer from the tag_values message closest before before_dt."""
@@ -308,7 +226,7 @@ class MaintenanceManagerApplication(Application):
         machine_odometer = None
 
         try:
-            messages = await self.api.get_channel_messages(
+            messages = await self.api.list_messages(
                 agent_id=self.agent_id,
                 channel_name="tag_values",
                 before=before_dt,
@@ -324,13 +242,10 @@ class MaintenanceManagerApplication(Application):
                 raw_run_hours = tracker_data.get("run_hours")
                 raw_odometer = tracker_data.get("odometer_km")
 
-                hours_offset = await self.get_tag("hours_offset", default=0) or 0
-                odo_offset = await self.get_tag("odo_offset", default=0) or 0
-
                 if raw_run_hours is not None:
-                    engine_hours = raw_run_hours + hours_offset
+                    engine_hours = raw_run_hours + self.tags.hours_offset.value
                 if raw_odometer is not None:
-                    machine_odometer = raw_odometer + odo_offset
+                    machine_odometer = raw_odometer + self.tags.odo_offset.value
 
                 log.info(
                     f"Found historical data at {msg.timestamp}: "
@@ -353,8 +268,7 @@ class MaintenanceManagerApplication(Application):
         if days_till_service_due > alert_period:
             return
 
-        already_sent = await self.get_tag("service_notification_sent", default=False)
-        if already_sent:
+        if self.tags.service_notification_sent.value:
             return
 
         try:
@@ -369,8 +283,7 @@ class MaintenanceManagerApplication(Application):
         )
 
         log.info(f"Sending service notification: {message}")
-        await self.api.publish_message(
-            self.agent_id,
+        await self.api.create_message(
             "notifications",
             {
                 "severity": "warning",
@@ -378,7 +291,7 @@ class MaintenanceManagerApplication(Application):
                 "message": message,
             },
         )
-        await self.set_tag("service_notification_sent", True)
+        await self.tags.service_notification_sent.set(True)
 
     # --- Helper methods ---
 
@@ -386,24 +299,15 @@ class MaintenanceManagerApplication(Application):
         """Seed all tags with sensible defaults on first run."""
         now_ms = int(time.time() * 1000)
 
-        defaults = {
-            "hours_offset": 0,
-            "odo_offset": 0,
-            "last_service_date": now_ms,
-            "last_service_hours": raw_run_hours,
-            "last_service_kms": raw_odometer,
-        }
-
-        for key, default in defaults.items():
-            existing = await self.get_tag(key)
-            if existing is None and default is not None:
-                await self.set_tag(key, default)
+        if self.tags.last_service_date.value is None:
+            await self.tags.last_service_date.set(now_ms)
+        if self.tags.last_service_odometer.value is None:
+            await self.tags.last_service_odometer.set(raw_odometer)
+        if self.tags.last_service_hours.value is None:
+            await self.tags.last_service_hours.set(raw_run_hours)
 
     def get_tracker_tag(self, key, default=None):
-        try:
-            return self._tag_values[self.config.tracker_app_key.value][key]
-        except (KeyError, TypeError):
-            return default
+        return self.tag_manager.get_tag(key, default, self.config.tracker_app_key.value)
 
     def _get_next_service_estimate(
         self,
@@ -455,7 +359,7 @@ class MaintenanceManagerApplication(Application):
         kms_per_day = 0
 
         try:
-            messages = await self.api.get_channel_messages(
+            messages = await self.api.list_messages(
                 agent_id=self.agent_id,
                 channel_name="tag_values",
                 after=start_date,

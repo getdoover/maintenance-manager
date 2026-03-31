@@ -29,4 +29,4 @@ dev = [
 packages = ["src/processor", "src/dashboard"]
 
 [tool.uv.sources]
-pydoover = { git = "https://github.com/getdoover/pydoover", branch = "doover-2" }
+pydoover = { git = "https://github.com/getdoover/pydoover" }
