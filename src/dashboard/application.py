@@ -31,7 +31,6 @@ class MaintenanceDashboardApp(Application):
     async def on_aggregate_update(self, event: AggregateUpdateEvent):
         """Triggered when deployment_config aggregate is updated (i.e. on deployment)."""
         await self.api.ping_connection_at(
-            self.agent_id,
             datetime.now(timezone.utc),
             ConnectionStatus.continuous_online_no_ping,
             ConnectionDetermination.online,

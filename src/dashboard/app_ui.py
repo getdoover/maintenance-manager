@@ -8,6 +8,8 @@ class MaintenanceDashboardUI(ui.UI, default_open=True):
         name="MaintenanceDashboard",
         display_name="MaintenanceDashboard",
         component_url="$config.app().dv_widget_url",
+        scope="MaintenanceDashboard",
+        module="./MaintenanceDashboardWidget",
         app_key="$config.app().APP_KEY",
         manager_app_key="maintenance_manager_1",
     )

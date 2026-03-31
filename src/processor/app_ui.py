@@ -129,6 +129,7 @@ class MaintenanceManagerUI(ui.UI):
                 name="LogServiceWidget",
                 display_name="Log Service",
                 component_url="$config.app().dv_widget_url",
+                scope="MaintenanceDashboard",
                 module="./LogServiceWidget",
                 device_name="$config.app().DISPLAY_NAME",
                 app_key="$config.app().APP_KEY",
