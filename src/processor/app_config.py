@@ -5,7 +5,7 @@ from pydoover.processor import ManySubscriptionConfig
 
 
 class MaintenanceManagerConfig(config.Schema):
-    subscription = ManySubscriptionConfig(default=["ui_cmds", "tag_values"])
+    subscription = ManySubscriptionConfig(default=["ui_cmds", "tag_values", "dv-rpc"])
     position = config.ApplicationPosition()
     tracker_app_key = config.ApplicationInstall(
         "Tracker App Key",

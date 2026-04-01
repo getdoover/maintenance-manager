@@ -2,7 +2,7 @@ import "./styles.css";
 import {useState} from "react";
 import {createPortal} from "react-dom";
 import RemoteComponentWrapper from "customer_site/RemoteComponentWrapper";
-import {useAgentChannel, useAgentSendUiCmd} from "customer_site/hooks";
+import {useAgentChannel, useChannelSendMessage} from "customer_site/hooks";
 import {useRemoteParams} from "customer_site/useRemoteParams";
 
 import dayjs from "dayjs";
@@ -22,6 +22,7 @@ function ServiceForm({
                        mutate,
                        isPending,
                        deviceName,
+                       appKey,
                        engineHours,
                        machineOdometer,
                        onClose,
@@ -29,6 +30,7 @@ function ServiceForm({
   mutate: (payload: any) => void;
   isPending: boolean;
   deviceName: string;
+  appKey: string;
   engineHours: number | null;
   machineOdometer: number | null;
   onClose: () => void;
@@ -58,13 +60,13 @@ function ServiceForm({
     setError(null);
     const dateMs = dayjs(dateTimeValue).valueOf();
     mutate({
+      method: "record_service",
+      type: "rpc",
+      app_key: appKey,
       request: {
-        name: "create_service",
-        values: {
-          dt: dateMs,
-          hours: parsedHours,
-          kms: parsedOdo,
-        },
+        service_dt: dateMs,
+        engine_hours: parsedHours,
+        machine_odometer: parsedOdo,
       },
     });
     onClose();
@@ -148,7 +150,7 @@ function LogServiceWidgetInner({uiElement, ui_element_props}: {
   ui_element_props?: any
 }) {
   const {agentId} = useRemoteParams();
-  const {mutate, isPending} = useAgentSendUiCmd(agentId) as any;
+  const {mutate, isPending} = useChannelSendMessage(agentId, "dv-rpc");
   const [showForm, setShowForm] = useState(false);
 
   const {app_key, device_name} = uiElement;
@@ -175,6 +177,7 @@ function LogServiceWidgetInner({uiElement, ui_element_props}: {
           mutate={mutate}
           isPending={isPending}
           deviceName={deviceName}
+          appKey={app_key}
           engineHours={engineHours}
           machineOdometer={machineOdometer}
           onClose={() => setShowForm(false)}

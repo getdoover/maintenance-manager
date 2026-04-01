@@ -39,7 +39,8 @@
                     "description": "A list of channels to subscribe to.",
                     "default": [
                         "ui_cmds",
-                        "tag_values"
+                        "tag_values",
+                        "dv-rpc"
                     ],
                     "x-position": 0,
                     "items": {

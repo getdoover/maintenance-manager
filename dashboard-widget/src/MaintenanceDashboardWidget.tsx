@@ -2,7 +2,7 @@ import "./styles.css";
 import {useState, useEffect, useMemo} from "react";
 import {createPortal} from "react-dom";
 import RemoteComponentWrapper from "customer_site/RemoteComponentWrapper";
-import {useAgentChannel, useAgentSendUiCmd, useMultiAgentAggregates} from "customer_site/hooks";
+import {useAgentChannel, useChannelSendMessage, useMultiAgentAggregates} from "customer_site/hooks";
 import {useRemoteParams} from "customer_site/useRemoteParams";
 
 import dayjs from "dayjs";
@@ -201,13 +201,13 @@ function ServiceForm({
     setError(null);
     const dateMs = dayjs(dateTimeValue).valueOf();
     mutate({
+      method: "record_service",
+      type: "rpc",
+      app_key: app_key,
       request: {
-        name: "create_service",
-        values: {
-          dt: dateMs,
-          hours: parsedHours,
-          kms: parsedOdo,
-        },
+        service_dt: dateMs,
+        engine_hours: parsedHours,
+        machine_odometer: parsedOdo,
       },
     });
     onClose();
@@ -291,7 +291,7 @@ function DeviceRow({
   app_key: string;
   compact?: boolean;
 }) {
-  const {mutate, isPending} = useAgentSendUiCmd(device.id) as any;
+  const {mutate, isPending} = useChannelSendMessage(device.id, "dv-rpc");
   const [expanded, setExpanded] = useState(false);
   const [showServiceForm, setShowServiceForm] = useState(false);
 

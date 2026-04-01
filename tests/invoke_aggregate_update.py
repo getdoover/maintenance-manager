@@ -5,7 +5,7 @@ TOKEN = ""
 AGENT_ID = "164589663015689482"
 ORG_ID = "7363803534221262848"
 CHANNEL_NAME = "tag_values"
-CHANNEL_NAME_MESSAGE = "ui_cmds"
+CHANNEL_NAME_MESSAGE = "dv-rpc"
 
 schedule_payload = {
     "op": "on_schedule",
@@ -55,17 +55,25 @@ message_create_payload = {
         "author_id": ORG_ID,
         "organisation_id": ORG_ID,
         "message": {
-            "id": "164874368382426401",
+            "id": "164885485443898671",
             "author_id": ORG_ID,
             "channel": {
                 "agent_id": AGENT_ID,
                 "name": CHANNEL_NAME_MESSAGE,
             },
             "data": {
-                "type": "rpc",
                 "app_key": "maintenance_manager_1",
-                "method": "set_machine_hours",
-                "request": 10,
+                "method": "record_service",
+                "request": {
+                    "engine_hours": 20.7,
+                    "machine_odometer": 5,
+                    "service_dt": 1775001139307,
+                },
+                "type": "rpc",
+                # "type": "rpc",
+                # "app_key": "maintenance_manager_1",
+                # "method": "set_machine_hours",
+                # "request": 10,
             },
             "attachments": [],
         },
@@ -80,7 +88,7 @@ sns_payload = {
     "Records": [
         {
             "Sns": {"Message": json.dumps(message_create_payload)},
-            "EventSubscriptionArn": "arn:aws:sns:ap-southeast-2:484395055539:proc-ch-164589663015689482-tag_values-onmessagecreate:568b704f-51d1-41ca-b5e5-fd138b501d9a",
+            "EventSubscriptionArn": "arn:aws:sns:ap-southeast-2:484395055539:proc-ch-164589663015689482-dv-rpc-onmessagecreate:d6186047-7908-4ac0-8463-d1c065dbf0c8",
             "EventSource": "aws:sns",
         }
     ]

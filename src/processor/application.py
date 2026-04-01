@@ -27,7 +27,7 @@ class MaintenanceManagerApplication(Application):
     tags_cls = MaintenanceManagerTags
 
     async def pre_hook_filter(self, event):
-        if isinstance(event, MessageCreateEvent) and event.channel.name != "ui_cmds":
+        if isinstance(event, MessageCreateEvent) and event.channel.name not in ("ui_cmds", "dv-rpc"):
             log.info(
                 "Filtering event for channel that is not ui_cmds with a message create event."
             )
