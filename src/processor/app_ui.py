@@ -16,39 +16,6 @@ class MaintenanceManagerUI(ui.UI):
         display_name="Tabs",
         children=[
             ui.Container(
-                "Service Info",
-                children=[
-                    ui.Timestamp(
-                        "Next Service Estimate",
-                        icon="calendar-day",
-                        value=MaintenanceManagerTags.next_service_est,
-                    ),
-                    ui.NumericVariable(
-                        "Kms Till Next Service",
-                        precision=1,
-                        units="km",
-                        icon="road",
-                        # hidden=config.service_interval_kms.value is not None,
-                        value=MaintenanceManagerTags.kms_till_next_service,
-                    ),
-                    ui.NumericVariable(
-                        "Hours To Next Service",
-                        precision=1,
-                        units="hrs",
-                        icon="clock",
-                        # hidden=config.service_interval_hours.value is not None,
-                        value=MaintenanceManagerTags.hours_till_next_service,
-                    ),
-                    ui.NumericVariable(
-                        "Days To Next Service",
-                        precision=0,
-                        units="days",
-                        icon="calendar",
-                        value=MaintenanceManagerTags.days_till_next_service,
-                    ),
-                ],
-            ),
-            ui.Container(
                 "Usage Info",
                 children=[
                     ui.NumericVariable(
@@ -78,6 +45,39 @@ class MaintenanceManagerUI(ui.UI):
                         units="km",
                         icon="gauge",
                         value=MaintenanceManagerTags.machine_odometer,
+                    ),
+                ],
+            ),
+            ui.Container(
+                "Service Info",
+                children=[
+                    ui.Timestamp(
+                        "Next Service Estimate",
+                        icon="calendar-day",
+                        value=MaintenanceManagerTags.next_service_est,
+                    ),
+                    ui.NumericVariable(
+                        "Kms Till Next Service",
+                        precision=1,
+                        units="km",
+                        icon="road",
+                        # hidden=config.service_interval_kms.value is not None,
+                        value=MaintenanceManagerTags.kms_till_next_service,
+                    ),
+                    ui.NumericVariable(
+                        "Hours To Next Service",
+                        precision=1,
+                        units="hrs",
+                        icon="clock",
+                        # hidden=config.service_interval_hours.value is not None,
+                        value=MaintenanceManagerTags.hours_till_next_service,
+                    ),
+                    ui.NumericVariable(
+                        "Days To Next Service",
+                        precision=0,
+                        units="days",
+                        icon="calendar",
+                        value=MaintenanceManagerTags.days_till_next_service,
                     ),
                 ],
             ),
@@ -136,6 +136,7 @@ class MaintenanceManagerUI(ui.UI):
             ),
         ],
     )
+
 
 def export():
     MaintenanceManagerUI(None, None, None).export(

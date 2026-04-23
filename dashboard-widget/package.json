@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "build": "rsbuild build",
-    "publish": "rsbuild build && doover channel publish-file maintenance_dashboard_widget assets/MaintenanceDashboardWidget.js --agent 152232040220066827 --profile dv2",
+    "publish": "rsbuild build && doover channel publish-file maintenance_manager_1_widget assets/MaintenanceDashboardWidget.js --agent 164589663015689482 --profile staging",
     "start": "rsbuild build && serve -s assets/ -l 8001",
     "watch": "rsbuild build --watch --mode development",
     "serve": "serve -s assets/ -l 8001"

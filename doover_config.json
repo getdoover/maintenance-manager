@@ -52,9 +52,9 @@
                         "description": "The name of the channel to subscribe to"
                     }
                 },
-                "dv-app-position": {
+                "dv_app_position": {
                     "title": "Position",
-                    "x-name": "dv-app-position",
+                    "x-name": "dv_app_position",
                     "x-hidden": true,
                     "type": [
                         "integer",
@@ -185,9 +185,9 @@
         "lambda_arn": null,
         "build_args": null,
         "ui_schema": {
-            "displayString": "$config.app().APP_DISPLAY_NAME:string",
+            "displayString": "$config.app().APP_DISPLAY_NAME",
             "hidden": "$config.app().hidden:boolean:false:boolean:false",
-            "position": "$config.app().position:number:50",
+            "position": "$config.app().dv_app_position:number:100",
             "icon": null,
             "colour": null,
             "defaultOpen": false,
@@ -390,6 +390,8 @@
                             "hidden": false,
                             "units": "hrs",
                             "icon": "clock",
+                            "currentValue": "$cmds.app().set_machine_hours",
+                            "appKey": "$config.app().APP_KEY",
                             "requiresConfirm": true
                         },
                         "set_odometer": {
@@ -400,6 +402,8 @@
                             "hidden": false,
                             "units": "km",
                             "icon": "road",
+                            "currentValue": "$cmds.app().set_odometer",
+                            "appKey": "$config.app().APP_KEY",
                             "requiresConfirm": true
                         },
                         "LogServiceWidget": {
@@ -416,8 +420,7 @@
                             "device_name": "$config.app().DISPLAY_NAME",
                             "app_key": "$config.app().APP_KEY"
                         }
-                    },
-                    "defaultOpen": true
+                    }
                 }
             }
         }
@@ -586,9 +589,9 @@
         "banner_url": null,
         "id": 152315649572528899,
         "ui_schema": {
-            "displayString": "$config.app().APP_DISPLAY_NAME:string",
+            "displayString": "$config.app().APP_DISPLAY_NAME",
             "hidden": "$config.app().hidden:boolean:false:boolean:false",
-            "position": "$config.app().position:number:50",
+            "position": "$config.app().dv_app_position:number:100",
             "icon": null,
             "colour": null,
             "defaultOpen": true,
