@@ -18,6 +18,7 @@ const mfConfig = createModuleFederationConfig({
     shared: {
         react: {singleton: true, requiredVersion: '^18.3.1', eager: true},
         'react-dom': {singleton: true, requiredVersion: '^18.3.1', eager: true},
+        'react-router': {singleton: true, requiredVersion: false, eager: true},
         'customer_site/hooks': {
             singleton: true,
             requiredVersion: false,

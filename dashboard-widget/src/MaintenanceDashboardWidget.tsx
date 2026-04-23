@@ -4,6 +4,7 @@ import {createPortal} from "react-dom";
 import RemoteComponentWrapper from "customer_site/RemoteComponentWrapper";
 import {useAgentChannel, useChannelSendMessage, useMultiAgentAggregates} from "customer_site/hooks";
 import {useRemoteParams} from "customer_site/useRemoteParams";
+import {Link} from "react-router";
 
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
@@ -307,13 +308,13 @@ function DeviceRow({
       >
         {/* Device name – clickable link */}
         <td className="p-2 align-middle whitespace-nowrap text-center">
-          <a
-            href={`/agent/${device.id}`}
+          <Link
+            to={`/agent/${device.id}`}
             className="text-primary hover:underline underline-offset-4 font-medium"
             onClick={(e) => e.stopPropagation()}
           >
             {device.display_name}
-          </a>
+          </Link>
         </td>
 
         {/* Next service due – timestamp with tooltip */}

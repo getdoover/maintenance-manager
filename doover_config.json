@@ -202,72 +202,12 @@
                     "position": 65,
                     "hidden": false,
                     "children": {
-                        "service_info": {
-                            "name": "service_info",
-                            "type": "uiContainer",
-                            "displayString": "Service Info",
-                            "showActivity": true,
-                            "position": 55,
-                            "hidden": false,
-                            "children": {
-                                "next_service_estimate": {
-                                    "name": "next_service_estimate",
-                                    "type": "uiTimestamp",
-                                    "displayString": "Next Service Estimate",
-                                    "showActivity": true,
-                                    "position": 51,
-                                    "hidden": false,
-                                    "icon": "calendar-day",
-                                    "varType": "timestamp",
-                                    "currentValue": "$tag.app().next_service_est:number:null"
-                                },
-                                "kms_till_next_service": {
-                                    "name": "kms_till_next_service",
-                                    "type": "uiVariable",
-                                    "displayString": "Kms Till Next Service",
-                                    "showActivity": true,
-                                    "position": 52,
-                                    "hidden": false,
-                                    "units": "km",
-                                    "icon": "road",
-                                    "varType": "float",
-                                    "currentValue": "$tag.app().kms_till_next_service:number:null",
-                                    "decPrecision": 1
-                                },
-                                "hours_to_next_service": {
-                                    "name": "hours_to_next_service",
-                                    "type": "uiVariable",
-                                    "displayString": "Hours To Next Service",
-                                    "showActivity": true,
-                                    "position": 53,
-                                    "hidden": false,
-                                    "units": "hrs",
-                                    "icon": "clock",
-                                    "varType": "float",
-                                    "currentValue": "$tag.app().hours_till_next_service:number:null",
-                                    "decPrecision": 1
-                                },
-                                "days_to_next_service": {
-                                    "name": "days_to_next_service",
-                                    "type": "uiVariable",
-                                    "displayString": "Days To Next Service",
-                                    "showActivity": true,
-                                    "position": 54,
-                                    "hidden": false,
-                                    "units": "days",
-                                    "icon": "calendar",
-                                    "varType": "float",
-                                    "currentValue": "$tag.app().days_till_next_service:number:null",
-                                    "decPrecision": 0
-                                }
-                            }
-                        },
                         "usage_info": {
                             "name": "usage_info",
                             "type": "uiContainer",
                             "displayString": "Usage Info",
                             "showActivity": true,
-                            "position": 60,
+                            "position": 55,
                             "hidden": false,
                             "children": {
                                 "ave_hours_per_day": {
@@ -275,7 +215,7 @@
                                     "type": "uiVariable",
                                     "displayString": "Ave Hours Per Day",
                                     "showActivity": true,
-                                    "position": 56,
+                                    "position": 51,
                                     "hidden": false,
                                     "units": "hrs",
                                     "icon": "clock",
@@ -288,7 +228,7 @@
                                     "type": "uiVariable",
                                     "displayString": "Ave Kms Per Day",
                                     "showActivity": true,
-                                    "position": 57,
+                                    "position": 52,
                                     "hidden": false,
                                     "units": "km",
                                     "icon": "road",
@@ -301,7 +241,7 @@
                                     "type": "uiVariable",
                                     "displayString": "Engine Hours",
                                     "showActivity": true,
-                                    "position": 58,
+                                    "position": 53,
                                     "hidden": false,
                                     "units": "hrs",
                                     "icon": "hourglass",
@@ -314,13 +254,73 @@
                                     "type": "uiVariable",
                                     "displayString": "Odometer",
                                     "showActivity": true,
-                                    "position": 59,
+                                    "position": 54,
                                     "hidden": false,
                                     "units": "km",
                                     "icon": "gauge",
                                     "varType": "float",
                                     "currentValue": "$tag.app().machine_odometer:number:null",
                                     "decPrecision": 1
+                                }
+                            }
+                        },
+                        "service_info": {
+                            "name": "service_info",
+                            "type": "uiContainer",
+                            "displayString": "Service Info",
+                            "showActivity": true,
+                            "position": 60,
+                            "hidden": false,
+                            "children": {
+                                "next_service_estimate": {
+                                    "name": "next_service_estimate",
+                                    "type": "uiTimestamp",
+                                    "displayString": "Next Service Estimate",
+                                    "showActivity": true,
+                                    "position": 56,
+                                    "hidden": false,
+                                    "icon": "calendar-day",
+                                    "varType": "timestamp",
+                                    "currentValue": "$tag.app().next_service_est:number:null"
+                                },
+                                "kms_till_next_service": {
+                                    "name": "kms_till_next_service",
+                                    "type": "uiVariable",
+                                    "displayString": "Kms Till Next Service",
+                                    "showActivity": true,
+                                    "position": 57,
+                                    "hidden": false,
+                                    "units": "km",
+                                    "icon": "road",
+                                    "varType": "float",
+                                    "currentValue": "$tag.app().kms_till_next_service:number:null",
+                                    "decPrecision": 1
+                                },
+                                "hours_to_next_service": {
+                                    "name": "hours_to_next_service",
+                                    "type": "uiVariable",
+                                    "displayString": "Hours To Next Service",
+                                    "showActivity": true,
+                                    "position": 58,
+                                    "hidden": false,
+                                    "units": "hrs",
+                                    "icon": "clock",
+                                    "varType": "float",
+                                    "currentValue": "$tag.app().hours_till_next_service:number:null",
+                                    "decPrecision": 1
+                                },
+                                "days_to_next_service": {
+                                    "name": "days_to_next_service",
+                                    "type": "uiVariable",
+                                    "displayString": "Days To Next Service",
+                                    "showActivity": true,
+                                    "position": 59,
+                                    "hidden": false,
+                                    "units": "days",
+                                    "icon": "calendar",
+                                    "varType": "float",
+                                    "currentValue": "$tag.app().days_till_next_service:number:null",
+                                    "decPrecision": 0
                                 }
                             }
                         },
