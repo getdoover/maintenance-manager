@@ -8,8 +8,8 @@ const mfConfig = createModuleFederationConfig({
     remotes: {
         // feel free to change these when you're testing & deploying locally.
         // the actual values don't matter (I think?) when this is deployed.
-        doover_admin: 'doover_admin@[window.dooverCustomerSite_remoteUrl]',
-        customer_site: 'customer_site@[window.dooverAdminSite_remoteUrl]',
+        doover_admin: 'doover_admin@[window.dooverAdminSite_remoteUrl]',
+        customer_site: 'customer_site@[window.dooverCustomerSite_remoteUrl]',
     },
     exposes: {
         './MaintenanceDashboardWidget': './src/MaintenanceDashboardWidget',
@@ -41,7 +41,6 @@ const mfConfig = createModuleFederationConfig({
             eager: true,
             requiredVersion: false,
         },
-
     },
 });
 
